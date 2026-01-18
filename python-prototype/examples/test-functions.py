@@ -1,17 +1,14 @@
 from sk import *
 
 # 'Sum Function' starts here ---
-def sum_body(args):
-    x = args["x"]
-    y = args["y"]
-    return x + y  # uses the SValue operator overloads
+def sum_body(x, y):
+    return x + y
 
 sum_fn = SFunction(["x", "y"], sum_body)
 # 'Sum Function' ends here ---
 
 # 'AddUp Function' starts here ---
-def addUp_body(args):
-    n = args["n"]
+def addUp_body(n):
     return n * (n + Sknown(1)) / Sknown(2)
 
 addUp_fn = SFunction(["n"], addUp_body)
