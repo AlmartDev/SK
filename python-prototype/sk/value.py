@@ -32,7 +32,7 @@ class SValue:
         return self
 
     def isKnownZero(self) -> bool:
-        return self.kind is SKind.known and (self.lower == 0 or self.higher == 0)
+        return self.kind is SKind.known and self.lower == 0
 
     def setKnown(self, value):
         self.lower = value
@@ -198,13 +198,88 @@ class SValue:
         else:
             raise ValueError("Cannot get bounds of Unknown SValue")
 
-    def __eq__(self, other):
+    # == Bolean logic ==
+
+    def __eq__(self, other):    # ==
         if not isinstance(other, SValue):
-            return False
-        if self.kind != other.kind:
-            return False
-        # Compare lower and higher with float/int tolerance
-        return self.lower == other.lower and self.higher == other.higher
+            other = SValue(other)
+
+        if self.kind in (SKind.symbolic, SKind.unknown) or other.kind in (SKind.symbolic, SKind.unknown):
+            from .symbolic import SSymbolic
+            return SSymbolic("eq", [self, other])
+
+        from .ops_boolean import equal
+        return equal(self, other)
+    
+    def __gt__(self, other):    # >
+        if not isinstance(other, SValue):
+            other = SValue(other)
+
+        if self.kind in (SKind.symbolic, SKind.unknown) or other.kind in (SKind.symbolic, SKind.unknown):
+            from .symbolic import SSymbolic
+            return SSymbolic("gt", [self, other])
+
+        from .ops_boolean import greater_than
+        return greater_than(self, other)
+    
+    def __lt__(self, other):    # <
+        if not isinstance(other, SValue):
+            other = SValue(other)
+
+        if self.kind in (SKind.symbolic, SKind.unknown) or other.kind in (SKind.symbolic, SKind.unknown):
+            from .symbolic import SSymbolic
+            return SSymbolic("lt", [self, other])
+
+        from .ops_boolean import less_than
+        return less_than(self, other)
+    
+    def __ge__(self, other):    # >=
+        if not isinstance(other, SValue):
+            other = SValue(other)
+
+        if self.kind in (SKind.symbolic, SKind.unknown) or other.kind in (SKind.symbolic, SKind.unknown):
+            from .symbolic import SSymbolic
+            return SSymbolic("ge", [self, other])
+
+        from .ops_boolean import greater_equal
+        return greater_equal(self, other)
+    
+    def __le__(self, other):    # <=
+        if not isinstance(other, SValue):
+            other = SValue(other)
+
+        if self.kind in (SKind.symbolic, SKind.unknown) or other.kind in (SKind.symbolic, SKind.unknown):
+            from .symbolic import SSymbolic
+            return SSymbolic("le", [self, other])
+
+        from .ops_boolean import less_equal
+        return less_equal(self, other)
+
+    def __ne__(self, other):    # !=
+        if not isinstance(other, SValue):
+            other = SValue(other)
+
+        if self.kind in (SKind.symbolic, SKind.unknown) or other.kind in (SKind.symbolic, SKind.unknown):
+            from .symbolic import SSymbolic
+            return SSymbolic("ne", [self, other])
+
+        from .ops_boolean import not_equal
+        return not_equal(self, other)
+    
+    def structurally_equal(self, other):
+        return (
+            isinstance(other, SValue)
+            and self.kind == other.kind
+            and self.lower == other.lower
+            and self.higher == other.higher
+        )
+
+    def __bool__(self): # x > y should return an SValue but Python will try to coerce it to True / False, which is undefined behavior.
+        raise TypeError(
+            "Cannot convert uncertain boolean to Python bool. "
+            "Use epistemic if instead."
+        )
+
 
 #   sk:
 

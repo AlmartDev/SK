@@ -11,4 +11,3 @@ if clearOnStart: os.system('cls' if os.name=='nt' else 'clear')
 for i, filename in enumerate(examples):
     print(f"\n#{i+1} {filename} {'='*20}\n")
     os.system(f"python3 -m examples.{filename}")
-

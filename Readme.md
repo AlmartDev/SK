@@ -1,5 +1,4 @@
 # SK Programming Language
-> Name is susceptible to change!
 
 ## Overview
 
@@ -13,7 +12,7 @@ For the moment, SK is implemented as a **Python-based prototype**. This allows e
 
 In order to run the python sk tests:
 ```sh
-python3 main.py <testname> # only after 'test-', inside ./python-prototype/
+python3 sk.py <testname> # only after 'test-', inside ./python-prototype/
 ```
 
 ## License

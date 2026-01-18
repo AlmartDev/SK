@@ -1,5 +1,6 @@
 from .value import SValue
 from .kind import SKind
+from .keywords import *
 
 def add(a: SValue, b: SValue) -> SValue:
     if a.kind is SKind.unknown or b.kind is SKind.unknown:

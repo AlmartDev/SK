@@ -33,3 +33,8 @@ def Strue():
 
 def Sfalse():
     return SValue(0)
+
+def Spartial():
+    return SValue(0,1)
+
+# unknown -> is already defined SValue()
