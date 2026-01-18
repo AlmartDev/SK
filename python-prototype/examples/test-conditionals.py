@@ -1,34 +1,28 @@
 from sk import *
 
-print("=== BOOLEAN TESTS ===\n")
+temp = Sinterval(22, 23)
+threshold = Sknown(22.5)
 
-# Basic known values
-a = SValue(3)
-b = SValue(5)
-c = SValue(3, 5)
-u = SValue()  # unknown
+def activate_cooler():
+    print("cooler ON")
 
-values = [a, b, c, u]
-names = ["a=3", "b=5", "c=[3..5]", "u=unknown"]
+def activate_heater():
+    print("heater ON")
 
-comparisons = [
-    (">", lambda x, y: x > y),
-    ("<", lambda x, y: x < y),
-    (">=", lambda x, y: x >= y),
-    ("<=", lambda x, y: x <= y),
-    ("==", lambda x, y: x == y),
-    ("!=", lambda x, y: x != y),
-]
+# Default policy: run_both
+epistemic_if(temp > threshold, activate_cooler, activate_heater)
+# Output:
+# cooler ON
+# heater ON
 
-for i, x in enumerate(values):
-    for j, y in enumerate(values):
-        print(f"Comparisons between {names[i]} and {names[j]}:")
-        for op_name, op_func in comparisons:
-            result = op_func(x, y)
-            print(f"  {names[i]} {op_name} {names[j]} => {result}")
-        print()
-        
-print("=== BOOLEAN KEYWORDS ===")
-print("Strue()   =", Strue())      # 1
-print("Sfalse()  =", Sfalse())     # 0
-print("Spartial()=", Spartial())   # [0..1]
+# Strict policy: don't run anything
+epistemic_if(temp > threshold, activate_cooler, activate_heater, policy="strict")
+# Output: (nothing)
+
+# Fail-on-partial policy: raise exception
+try:
+    epistemic_if(temp > threshold, activate_cooler, activate_heater, policy="fail_on_partial")
+except ValueError as e:
+    print(e)
+# Output:
+# Partial or unknown condition: [0..1]

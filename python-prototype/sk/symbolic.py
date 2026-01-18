@@ -74,7 +74,11 @@ class SSymbolic:
         return SKind.known
 
     def __repr__(self):
-        return f"{self.expr}({', '.join(map(str, self.operands))})"
+        def _repr(op):
+            if isinstance(op, SValue) or isinstance(op, SSymbolic):
+                return repr(op)
+            return str(op)  # fallback for raw numbers
+        return f"{self.expr}({', '.join(_repr(op) for op in self.operands)})"
 
     def resolve(self):
         # Resolve all operands recursively

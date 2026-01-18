@@ -60,9 +60,11 @@ class SValue:
         if self.kind is SKind.unknown:
             return "unknown"
         if self.kind is SKind.known:
-            val = self.lower if self.lower is not None else self.higher
-            return f"{val}"
-        return f"[{self.lower}..{self.higher}]"
+            return str(self.lower)
+        if self.kind is SKind.interval:
+            return f"[{self.lower}..{self.higher}]"
+        if self.kind is SKind.symbolic:
+            return f"symbolic({self.expr})"
 
     def __neg__(self):
         # Unknown stays unknown
@@ -279,11 +281,3 @@ class SValue:
             "Cannot convert uncertain boolean to Python bool. "
             "Use epistemic if instead."
         )
-
-
-#   sk:
-
-#   basic values
-#   x = [3..5]    => interval from 3 to 5
-#   y = 2         => y is exacly 2
-#   z = unknown   => z is a value currently not known
