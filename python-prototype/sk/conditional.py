@@ -6,8 +6,8 @@ from enum import Enum, auto
 
 class IfPolicy(Enum):
     merge = auto()  # Run both, return the convex hull (Union)
-    none = auto()   # Run neither, return SValue() (Unknown)
-    strict = auto()  # Raise an exception (crash)
+    strict = auto()   # Run neither, return SValue() (Unknown)
+    panic = auto()  # Raise an exception (crash)
     symbolic = auto() # Return a symbolic 'mux' node
 
 DEFAULT_POLICY = IfPolicy.merge
@@ -21,10 +21,10 @@ def epistemic_if(condition, if_fn, else_fn, policy=IfPolicy.merge):
         return if_fn() if resolved.lower == 1 else else_fn()
 
     # 2. UNCERTAIN CASE
-    if policy == IfPolicy.strict:
+    if policy == IfPolicy.panic:
         raise ValueError(f"Partial or unknown condition: {resolved}")
     
-    if policy == IfPolicy.none:
+    if policy == IfPolicy.strict:
         return None # Or SValue() if you want an unknown return
 
     if policy == IfPolicy.merge:
