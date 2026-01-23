@@ -4,8 +4,6 @@ class SValue:
     def __init__(self, lower=None, higher=None):
         self.lower = lower
         self.higher = higher
-
-        # dependents to notify when value changes
         self._dependents = set() 
 
         defined_count = sum(x is not None for x in (lower, higher))
@@ -14,19 +12,19 @@ class SValue:
             self.kind = SKind.unknown
         elif defined_count == 1:
             self.kind = SKind.known
-            # Ensure lower holds the known value
             if self.lower is None:
                 self.lower = self.higher
             self.higher = None
         elif defined_count == 2 and lower == higher:
             self.kind = SKind.known
-            # Ensure lower holds the value
             self.lower = lower
             self.higher = None
         else:
             self.kind = SKind.interval
-            if lower > higher:
-                raise ValueError(f"Invalid Interval: lower ({lower}) cannot be greater than higher ({higher})")
+            # Only validate range if both are numeric
+            if isinstance(lower, (int, float)) and isinstance(higher, (int, float)):
+                if lower > higher:
+                    raise ValueError(f"Invalid Interval: lower ({lower}) cannot be greater than higher ({higher})")
 
     def resolve(self):
         return self
@@ -47,16 +45,12 @@ class SValue:
         self._notify_dependents()
 
     def setInterval(self, low, high):
-        if low > high:
-            raise ValueError("Invalid interval")
         self.lower = low
         self.higher = high
         self.kind = SKind.interval
         self._notify_dependents()
 
     def __repr__(self):
-        """Returns a string representation for easier debugging."""
-
         if self.kind is SKind.unknown:
             return "unknown"
         if self.kind is SKind.known:
@@ -67,16 +61,10 @@ class SValue:
             return f"symbolic({self.expr})"
 
     def __neg__(self):
-        # Unknown stays unknown
         if self.kind is SKind.unknown:
             return SValue()
-
-        # Known: negate the single value
         if self.kind is SKind.known:
-            val = self.lower if self.lower is not None else self.higher
-            return SValue(-val)
-
-        # Interval: both bounds exist here
+            return SValue(-self.lower)
         return SValue(-self.higher, -self.lower)
     
     def add_dependent(self, symbolic):
@@ -86,186 +74,122 @@ class SValue:
         self._dependents.discard(symbolic)
 
     def _notify_dependents(self):
-        for sym in self._dependents:
-            sym.invalidate()  # mark symbolic as needing re-resolve
+        for sym in list(self._dependents):
+            sym.invalidate()
 
-    # == operator overloads ==
     def __add__(self, other):
-        from .ops import add
+        from .symbolic import SQuietSymbolic
         if not isinstance(other, SValue):
             other = SValue(other)
-
-        # Create symbolic if either operand is unknown or symbolic
-        if self.kind in (SKind.unknown, SKind.symbolic) or other.kind in (SKind.unknown, SKind.symbolic):
-            from .symbolic import SSymbolic
-            return SSymbolic("add", [self, other])
-
-        # Otherwise compute numeric
-        return add(self, other)
+        return SQuietSymbolic("add", [self, other])
 
     def __radd__(self, other):
         return self.__add__(other)
 
     def __sub__(self, other):
-        from .ops import add
+        from .symbolic import SQuietSymbolic
         if not isinstance(other, SValue):
             other = SValue(other)
-
-        if self.kind in (SKind.unknown, SKind.symbolic) or other.kind in (SKind.unknown, SKind.symbolic):
-            from .symbolic import SSymbolic
-            return SSymbolic("sub", [self, other])
-
-        return add(self, -other)
+        return SQuietSymbolic("sub", [self, other])
 
     def __rsub__(self, other):
-        from .ops import add
+        from .symbolic import SQuietSymbolic
         if not isinstance(other, SValue):
             other = SValue(other)
-
-        if self.kind in (SKind.unknown, SKind.symbolic) or other.kind in (SKind.unknown, SKind.symbolic):
-            from .symbolic import SSymbolic
-            return SSymbolic("sub", [other, self])
-
-        return add(other, -self)
+        return SQuietSymbolic("sub", [other, self]).resolve()
 
     def __mul__(self, other):
-        from .ops import product
+        from .symbolic import SQuietSymbolic
         if not isinstance(other, SValue):
             other = SValue(other)
-
-        if self.kind in (SKind.unknown, SKind.symbolic) or other.kind in (SKind.unknown, SKind.symbolic):
-            from .symbolic import SSymbolic
-            return SSymbolic("mul", [self, other])
-
-        return product(self, other)
+        return SQuietSymbolic("mul", [self, other]).resolve()
 
     def __rmul__(self, other):
         return self.__mul__(other)
 
     def __truediv__(self, other):
-        from .ops import divide
+        from .symbolic import SQuietSymbolic
         if not isinstance(other, SValue):
             other = SValue(other)
-
-        if self.kind in (SKind.unknown, SKind.symbolic) or other.kind in (SKind.unknown, SKind.symbolic):
-            from .symbolic import SSymbolic
-            return SSymbolic("div", [self, other])
-
-        return divide(self, other)
+        return SQuietSymbolic("div", [self, other]).resolve()
 
     def __rtruediv__(self, other):
-        from .ops import divide
+        from .symbolic import SQuietSymbolic
         if not isinstance(other, SValue):
             other = SValue(other)
-
-        if self.kind in (SKind.unknown, SKind.symbolic) or other.kind in (SKind.unknown, SKind.symbolic):
-            from .symbolic import SSymbolic
-            return SSymbolic("div", [other, self])
-
-        return divide(other, self)
+        return SQuietSymbolic("div", [other, self]).resolve()
 
     def __pow__(self, other):
-        from .ops import power
+        from .symbolic import SQuietSymbolic
         if not isinstance(other, SValue):
             other = SValue(other)
-
-        if self.kind in (SKind.unknown, SKind.symbolic) or other.kind in (SKind.unknown, SKind.symbolic):
-            from .symbolic import SSymbolic
-            return SSymbolic("pow", [self, other])
-
-        return power(self, other)
+        return SQuietSymbolic("pow", [self, other]).resolve()
 
     def __rpow__(self, other):
-        from .ops import power
+        from .symbolic import SQuietSymbolic
         if not isinstance(other, SValue):
             other = SValue(other)
-
-        if self.kind in (SKind.unknown, SKind.symbolic) or other.kind in (SKind.unknown, SKind.symbolic):
-            from .symbolic import SSymbolic
-            return SSymbolic("pow", [other, self])
-
-        return power(other, self)
+        return SQuietSymbolic("pow", [other, self]).resolve()
 
     def bounds(self):
-        """
-        Returns a tuple (min, max) for this SValue.
-        - Known: both values are the same
-        - Interval: lower and higher
-        """
         if self.kind is SKind.known:
-            val = self.lower if self.lower is not None else self.higher
-            return val, val
+            return self.lower, self.lower
         elif self.kind is SKind.interval:
             return self.lower, self.higher
         else:
             raise ValueError("Cannot get bounds of Unknown SValue")
 
-    # == Bolean logic ==
     def __eq__(self, other):
+        from .symbolic import SSymbolic
         if not isinstance(other, SValue):
             other = SValue(other)
-
-        # If either is symbolic, return symbolic equality
         if self.kind in (SKind.symbolic, SKind.unknown) or other.kind in (SKind.symbolic, SKind.unknown):
-            from .symbolic import SSymbolic
             return SSymbolic("eq", [self, other])
-
-        # Otherwise, numeric equality
         from .ops_boolean import equal
         return equal(self, other)
 
-    def __gt__(self, other):    # >
+    def __gt__(self, other):
+        from .symbolic import SSymbolic
         if not isinstance(other, SValue):
             other = SValue(other)
-
         if self.kind in (SKind.symbolic, SKind.unknown) or other.kind in (SKind.symbolic, SKind.unknown):
-            from .symbolic import SSymbolic
             return SSymbolic("gt", [self, other])
-
         from .ops_boolean import greater_than
         return greater_than(self, other)
     
-    def __lt__(self, other):    # <
+    def __lt__(self, other):
+        from .symbolic import SSymbolic
         if not isinstance(other, SValue):
             other = SValue(other)
-
         if self.kind in (SKind.symbolic, SKind.unknown) or other.kind in (SKind.symbolic, SKind.unknown):
-            from .symbolic import SSymbolic
             return SSymbolic("lt", [self, other])
-
         from .ops_boolean import less_than
         return less_than(self, other)
     
-    def __ge__(self, other):    # >=
+    def __ge__(self, other):
+        from .symbolic import SSymbolic
         if not isinstance(other, SValue):
             other = SValue(other)
-
         if self.kind in (SKind.symbolic, SKind.unknown) or other.kind in (SKind.symbolic, SKind.unknown):
-            from .symbolic import SSymbolic
             return SSymbolic("ge", [self, other])
-
         from .ops_boolean import greater_equal
         return greater_equal(self, other)
     
-    def __le__(self, other):    # <=
+    def __le__(self, other):
+        from .symbolic import SSymbolic
         if not isinstance(other, SValue):
             other = SValue(other)
-
         if self.kind in (SKind.symbolic, SKind.unknown) or other.kind in (SKind.symbolic, SKind.unknown):
-            from .symbolic import SSymbolic
             return SSymbolic("le", [self, other])
-
         from .ops_boolean import less_equal
         return less_equal(self, other)
 
-    def __ne__(self, other):    # !=
+    def __ne__(self, other):
+        from .symbolic import SSymbolic
         if not isinstance(other, SValue):
             other = SValue(other)
-
         if self.kind in (SKind.symbolic, SKind.unknown) or other.kind in (SKind.symbolic, SKind.unknown):
-            from .symbolic import SSymbolic
             return SSymbolic("ne", [self, other])
-
         from .ops_boolean import not_equal
         return not_equal(self, other)
     
@@ -277,7 +201,7 @@ class SValue:
             and self.higher == other.higher
         )
 
-    def __bool__(self): # x > y should return an SValue but Python will try to coerce it to True / False, which is undefined behavior.
+    def __bool__(self):
         raise TypeError(
             "Cannot convert uncertain boolean to Python bool. "
             "Use epistemic if instead."

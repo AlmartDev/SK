@@ -37,4 +37,7 @@ def Sfalse():
 def Spartial():
     return SValue(0,1)
 
-# unknown -> is already defined SValue()
+# unknown -> is already defined as SValue()
+
+def Kind(obj: SValue):
+    return obj.kind

@@ -25,12 +25,15 @@ def epistemic_if(condition, if_fn, else_fn, policy=IfPolicy.merge):
         raise ValueError(f"Partial or unknown condition: {resolved}")
     
     if policy == IfPolicy.strict:
-        return None # Or SValue() if you want an unknown return
+        return SValue()
 
     if policy == IfPolicy.merge:
         val_true = if_fn()
         val_false = else_fn()
         return merge_universes(val_true, val_false)
+    
+    if policy == IfPolicy.symbolic:
+        return Ssymbolic("mux", [condition, if_fn(), else_fn()])
     
     return None
 

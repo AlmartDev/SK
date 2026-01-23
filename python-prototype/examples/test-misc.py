@@ -1,20 +1,47 @@
 from sk import *
 
-# A simple program for a self-driving car written in SK-prototype
+def test_interval_dependency():
+    x = Sinterval(1, 2)
+    
+    expr = x - x
+    result = expr.resolve()
+    
+    print(f"Dependency Test: x={x}")
+    print(f"Expression: x - x -> {expr}")
+    print(f"Resolved: {result}")
+    
+    assert result.kind == Sknown(0).kind and result.lower == 0
 
-velocity = Sunknown() # in km/h
+def test_lazy_resolution():
+    a = SValue(10)
+    b = Sknown(5)
+    
+    expr = a + b
+    first_resolve = expr.resolve()
+    print(f"Lazy Test Initial: {a} + {b} = {first_resolve}")
+    
+    a.setKnown(20)
+    second_resolve = expr.resolve()
+    print(f"Lazy Test Updated: {a} + {b} = {second_resolve}")
+    
+    assert first_resolve.lower == 15
+    assert second_resolve.lower == 25
 
-refined_velocity = (velocity * 10) / 36    # Symbolic variable, velocity in m/s
-print(refined_velocity)
+def test_non_numeric_intervals():
+    status = SValue("low", "high")
+    print(f"Non-numeric Interval: {status}")
+    
+    try:
+        invalid = SValue("high", "low")
+    except ValueError as e:
+        print(f"Caught expected error: {e}")
 
-reader_online = Strue()
+    assert status.lower == "low"
+    assert status.higher == "high"
 
-def reader_true():
-    velocity.setInterval(60 , 70)
-
-def reader_false():
-    print("PANIC! cant retrieve speed")
-
-epistemic_if(reader_online == Strue(), reader_true, reader_false)
-
-print(refined_velocity.resolve())
+if __name__ == "__main__":
+    test_interval_dependency()
+    print("---")
+    test_lazy_resolution()
+    print("---")
+    test_non_numeric_intervals()

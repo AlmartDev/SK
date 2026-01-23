@@ -136,14 +136,15 @@ This guarantees the symbolic formula will not be altered during program executio
 ```js
 let x = [0..1]
 
-if x > 0.5 {
+if x > 0.5 -> merge {
     result = "high"
 } else {
     result = "low"
 }
 
-// SK merges both possibilities and produces
-// result = ["low".."high"] = interval from low to high
+// Runs both results so in this case result = ["low".."high"]
+
+
 ```
 
 ### 5. Functions
