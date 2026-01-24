@@ -42,6 +42,16 @@ def simplify(expr, operands):
         if operands[0] is operands[1] or operands[0].structurally_equal(operands[1]):
             return SValue(0)
 
+    elif expr == "div":
+        # Identity: x / x is 1
+        if operands[0] is operands[1] or operands[0].structurally_equal(operands[1]):
+            if operands[0].kind == SKind.known and operands[0].lower == 0:
+                raise ZeroDivisionError(f"division by 0 is not allowed")
+            return SValue(1)
+        # Identity: x / 1 is x
+        if operands[1].kind == SKind.known and operands[1].lower == 1:
+            return operands[0]
+
     elif expr == "mul":
         for op in operands:
             if op.kind == SKind.known and op.lower == 0:
@@ -50,6 +60,17 @@ def simplify(expr, operands):
         if not operands:
             return SValue(1)
         if len(operands) == 1:
+            return operands[0]
+
+    elif expr == "pow":
+        # 1 ** x is 1
+        if operands[0].kind == SKind.known and operands[0].lower == 1:
+            return SValue(1)
+        # x ** 0 is 1
+        if operands[1].kind == SKind.known and operands[1].lower == 0:
+            return SValue(1)
+        # x ** 1 is x
+        if operands[1].kind == SKind.known and operands[1].lower == 1:
             return operands[0]
 
     return SSymbolic(expr, operands)

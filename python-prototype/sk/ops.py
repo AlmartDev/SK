@@ -72,12 +72,21 @@ def divide(a: SValue, b: SValue) -> SValue:
 
 
 def power(a: SValue, b: SValue) -> SValue:
+    # 1 ** anything is 1
+    if a.kind is SKind.known and a.lower == 1:
+        return SValue(1)
+        
+    # anything ** 0 is 1
+    if b.kind is SKind.known and b.lower == 0:
+        return SValue(1)
+
+    # Now check for unknowns
     if a.kind is SKind.unknown or b.kind is SKind.unknown:
         return SValue()
 
     # Both known
     if a.kind is SKind.known and b.kind is SKind.known:
-        # 0**0 = 1
+        # 0**0 = 1 YES IT IS OK?
         if a.lower == 0 and b.lower == 0:
             return SValue(1)
         if a.lower == 0 and b.lower < 0:
