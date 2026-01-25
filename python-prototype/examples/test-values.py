@@ -1,5 +1,3 @@
-
-
 from sk import *
 
 x = Sunknown()          # Unknown variable

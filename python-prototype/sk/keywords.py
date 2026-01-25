@@ -18,7 +18,7 @@ def Squiet(expr, operands):
     return SQuietSymbolic(expr, operands)
 
 
-def Const(obj): # supports only constant symbolic and constant quiet symbolic
+def Sconst(obj): # supports only constant symbolic and constant quiet symbolic
     if isinstance(obj, SSymbolic) and not isinstance(obj, SQuietSymbolic):
         return SConstSymbolic(obj.expr, obj.operands)
     elif isinstance(obj, SQuietSymbolic):
@@ -39,5 +39,5 @@ def Spartial():
 
 # unknown -> is already defined as SValue()
 
-def Kind(obj: SValue):
+def Skind(obj: SValue):
     return obj.kind

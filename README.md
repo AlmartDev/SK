@@ -188,3 +188,7 @@ SK makes unknown and partially known values first-class citizens. Calculations p
 * Reason rigorously about partially known information
 
 SK transforms programming from assuming precision to honestly modeling knowledge and ignorance, enabling robust, intelligent systems.
+
+## Flavortown Hackclub
+
+<https://flavortown.hackclub.com/projects/8834>

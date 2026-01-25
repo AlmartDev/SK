@@ -1,0 +1,6 @@
+let number = 1 
+print(number) // this variable is known!
+
+if number == 2 {
+    print("hello!")
+}
