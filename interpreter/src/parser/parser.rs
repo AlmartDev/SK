@@ -170,7 +170,9 @@ impl Parser {
             return Ok(Expr::Literal { value: self.previous().token.clone() });
         }
 
-        if self.match_token(Token::Identifier("".to_string())) || self.match_token(Token::Print) {
+        if self.match_token(Token::Identifier("".to_string())) 
+            || self.match_token(Token::Print) 
+            || self.match_token(Token::Kind) { 
             return Ok(Expr::Variable { name: self.previous().token.clone() });
         }
 
