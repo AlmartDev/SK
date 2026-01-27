@@ -5,6 +5,7 @@
 
 unknown myvar // same as let myvar = unknown
 let variable = 67
+let version = 1.0
 let interval = [0..1]
 let scientific = 10e3
 
@@ -14,6 +15,9 @@ variable = variable + 2
 
 print(0*myvar)
 print(kind(variable))
+print(kind(str(variable)))
+
+print("SK Language version: " + str(version))
 
 panic
 

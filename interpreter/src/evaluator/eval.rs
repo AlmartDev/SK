@@ -98,12 +98,16 @@ impl<'a> Evaluator<'a> {
             Expr::Grouping { expression } => self.eval_expr(*expression),
             Expr::Call { callee, arguments } => {
                 let name = match *callee {
-                    Expr::Variable { name: Token::Identifier(n) } => n,
-                    Expr::Variable { name: Token::Print } => "print".to_string(),
-                    Expr::Variable { name: Token::Kind } => "kind".to_string(), // Add this
-                    _ => return Err("Only identifiers can be called as functions".to_string()),
+                    Expr::Variable { name } => match name {
+                        Token::Identifier(n) => n,
+                        Token::Print => "print".to_string(),
+                        Token::Kind => "kind".to_string(),
+                        Token::String(_) => "str".to_string(),
+                        _ => return Err("Only identifiers or built-in keywords can be called.".to_string()),
+                    },
+                    _ => return Err("Only identifiers can be called.".to_string()),
                 };
-                
+
                 let mut eval_args = Vec::new();
                 for arg in arguments {
                     eval_args.push(self.eval_expr(arg)?);
@@ -118,19 +122,25 @@ impl<'a> Evaluator<'a> {
                     },
                     "kind" => {
                         if eval_args.len() != 1 {
-                            return Err("kind() expects exactly 1 argument".to_string());
+                            return Err("kind() expects exactly 1 argument.".to_string());
                         }
                         let type_name = match eval_args[0] { // symbolic, quiet ...
-                            Value::Number(_) => "Number",
-                            Value::String(_) => "String",
-                            Value::Bool(_) => "Bool",
-                            Value::Interval(_, _) => "Interval",
-                            Value::Unknown => "Unknown",
-                            Value::None => "None",
+                            Value::Number(_) => "number",
+                            Value::String(_) => "string",
+                            Value::Bool(_) => "bool",
+                            Value::Interval(_, _) => "interval",
+                            Value::Unknown => "unknown",
+                            Value::None => "none",
                         };
                         Ok(Value::String(type_name.to_string()))
-                    },
-                    _ => Err(format!("Undefined function '{}'", name))
+                    }
+                    "str" => {
+                        if eval_args.len() != 1 {
+                            return Err("str() expects exactly 1 argument.".to_string());
+                        }
+                        Ok(Value::String(format!("{}", eval_args[0])))
+                    }
+                    _ => Err(format!("Undefined function '{}'.", name)),
                 }
             }
         }
@@ -138,7 +148,6 @@ impl<'a> Evaluator<'a> {
 
     fn apply_binary(&self, left: Value, op: Token, right: Value) -> Result<Value, String> {
         match (left.clone(), op.clone(), right.clone()) {
-            // --- 1. Identity & Algebraic Simplification ---
             // Multiplication by Zero: 0 * unknown = 0
             (Value::Number(n), Token::Star, _) if n == 0.0 => Ok(Value::Number(0.0)),
             (_, Token::Star, Value::Number(n)) if n == 0.0 => Ok(Value::Number(0.0)),
@@ -155,10 +164,8 @@ impl<'a> Evaluator<'a> {
                 }
             }
 
-            // --- 2. Existing Unknown Propagation ---
             (Value::Unknown, _, _) | (_, _, Value::Unknown) => Ok(Value::Unknown),
 
-            // --- 3. Number & Number Arithmetic ---
             (Value::Number(a), Token::Plus, Value::Number(b)) => Ok(Value::Number(a + b)),
             (Value::Number(a), Token::Minus, Value::Number(b)) => Ok(Value::Number(a - b)),
             (Value::Number(a), Token::Star, Value::Number(b)) => Ok(Value::Number(a * b)),
@@ -167,7 +174,6 @@ impl<'a> Evaluator<'a> {
                 Ok(Value::Number(a / b))
             },
 
-            // --- 4. Interval Arithmetic ---
             // Interval & Number
             (Value::Interval(min, max), Token::Plus, Value::Number(n)) |
             (Value::Number(n), Token::Plus, Value::Interval(min, max)) => Ok(Value::Interval(min + n, max + n)),
@@ -196,6 +202,12 @@ impl<'a> Evaluator<'a> {
                     p.iter().copied().fold(f64::NEG_INFINITY, f64::max)
                 ))
             },
+
+            // String Concatenation!
+            (Value::String(mut s1), Token::Plus, Value::String(s2)) => {
+                s1.push_str(&s2);
+                Ok(Value::String(s1))
+            }
 
             _ => Err("Operation not supported for these types".to_string()),
         }

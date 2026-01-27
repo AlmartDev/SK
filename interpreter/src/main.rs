@@ -43,20 +43,24 @@ fn main() {
         .filter_level(log::LevelFilter::Warn)
         .init();
 
-    let mut args = env::args().skip(1);
-    
-    let path = match args.next() {
-        Some(p) => PathBuf::from(p),
-        None => {
-            help();
-            process::exit(1)
-        }
-    };
+    let args: Vec<String> = env::args().skip(1).collect();
 
-    if args.next().is_some() {  // too many arguments
+    if args.is_empty() {
         help();
-        process::exit(1)
+        process::exit(1);
     }
+
+    if args.contains(&"--version".to_string()) {
+        println!("{} v.{}", NAME, VERSION);
+        process::exit(0);
+    }
+
+    if args.len() > 1 {
+        help();
+        process::exit(1);
+    }
+
+    let path = PathBuf::from(&args[0]);
 
     if let Err(e) = check(&path) {  // check file is valid
         log::error!("{}", e);

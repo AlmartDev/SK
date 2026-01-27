@@ -172,8 +172,10 @@ impl Parser {
 
         if self.match_token(Token::Identifier("".to_string())) 
             || self.match_token(Token::Print) 
-            || self.match_token(Token::Kind) { 
-            return Ok(Expr::Variable { name: self.previous().token.clone() });
+            || self.match_token(Token::Kind)  
+            || self.match_token(Token::String("".to_string())) {
+
+            return Ok(Expr::Variable { name: self.previous().token.clone() }); // Just return, don't call finish_call
         }
 
         if self.match_token(Token::LParen) {
