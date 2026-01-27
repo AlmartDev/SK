@@ -7,3 +7,12 @@ unknown myvar // same as let myvar = unknown
 let variable = 67
 let interval = [0..1]
 let scientific = 10e3
+
+print("Hello, World!")
+
+variable = variable + 2
+print(variable)
+
+panic
+
+print("This shouldn't be printed out!")

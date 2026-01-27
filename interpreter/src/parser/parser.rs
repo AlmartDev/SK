@@ -28,10 +28,10 @@ impl Parser {
     fn declaration(&mut self) -> Result<Stmt, String> { // change this to a match later (symbolic, quiet, const, etc...)
         if self.match_token(Token::Let) {
             self.let_declaration()
-
         } else if self.match_token(Token::Unknown) {
             self.unknown_declaration()
-            
+        } else if self.match_token(Token::Panic) {
+            self.panic_statement()
         } else {
             self.statement()
         }
@@ -52,57 +52,49 @@ impl Parser {
         self.consume(Token::Assign, "Expect '=' after variable name.")?;
 
         let initializer = self.expression()?;
-        
+
         self.end_stmt()?;
         Ok(Stmt::Let { name, initializer })
     }
 
     fn statement(&mut self) -> Result<Stmt, String> {
-        if self.match_token(Token::Print) {
-            let expr = self.expression()?;
+        // Check for assignment: identifier = expression
+        if self.peek_type(Token::Identifier(String::new())) && self.peek_next_type(Token::Assign) {
+            let name = self.advance().token.clone();
+            self.advance(); // consume '='
+            let value = self.expression()?;
             self.end_stmt()?;
-            return Ok(Stmt::Print { expression: expr });
+            return Ok(Stmt::Assign { name, value });
         }
 
         let expr = self.expression()?;
+
+        if let Expr::Call { ref callee, .. } = expr {
+            if let Expr::Variable { name: Token::Identifier(ref n) } = **callee {
+                if n == "print" {
+                    self.end_stmt()?;
+                    return Ok(Stmt::Print { expression: expr });
+                }
+            }
+        }
+
+        if let Expr::Variable { name: Token::Identifier(ref n) } = expr {
+            if n == "print" {
+                return Err("Syntax Error: 'print' is a function and requires parentheses. Use: print(...)".to_string());
+            }
+        }
+
         self.end_stmt()?;
         Ok(Stmt::Expression { expression: expr })
     }
 
-    fn expression(&mut self) -> Result<Expr, String> {
-        self.equality()
+    pub fn expression(&mut self) -> Result<Expr, String> {
+        self.addition()
     }
 
-    fn equality(&mut self) -> Result<Expr, String> {
-        let mut expr = self.comparison()?;
-        while self.match_any(&[Token::Equal, Token::NotEqual]) {
-            let operator = self.previous().token.clone();
-            let right = self.comparison()?;
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                operator,
-                right: Box::new(right),
-            };
-        }
-        Ok(expr)
-    }
-
-    fn comparison(&mut self) -> Result<Expr, String> {
-        let mut expr = self.term()?;
-        while self.match_any(&[Token::Greater, Token::GreaterEqual, Token::Less, Token::LessEqual]) {
-            let operator = self.previous().token.clone();
-            let right = self.term()?;
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                operator,
-                right: Box::new(right),
-            };
-        }
-        Ok(expr)
-    }
-
-    fn term(&mut self) -> Result<Expr, String> {
+    fn addition(&mut self) -> Result<Expr, String> {
         let mut expr = self.factor()?;
+
         while self.match_any(&[Token::Plus, Token::Minus]) {
             let operator = self.previous().token.clone();
             let right = self.factor()?;
@@ -135,40 +127,74 @@ impl Parser {
             let right = self.unary()?;
             return Ok(Expr::Unary { operator, right: Box::new(right) });
         }
-        self.primary()
+        self.call()
+    }
+
+    fn call(&mut self) -> Result<Expr, String> {
+        let mut expr = self.primary()?;
+
+        loop {
+            if self.match_token(Token::LParen) {
+                expr = self.finish_call(expr)?;
+            } else {
+                break;
+            }
+        }
+        Ok(expr)
+    }
+
+    fn finish_call(&mut self, callee: Expr) -> Result<Expr, String> {
+        let mut arguments = Vec::new();
+        if !self.check(&Token::RParen) {
+            loop {
+                arguments.push(self.expression()?);
+                if !self.match_token(Token::Comma) { break; }
+            }
+        }
+        self.consume(Token::RParen, "Expect ')' after arguments.")?;
+
+        Ok(Expr::Call {
+            callee: Box::new(callee),
+            arguments,
+        })
     }
 
     fn primary(&mut self) -> Result<Expr, String> {
         if self.match_token(Token::True) { return Ok(Expr::Literal { value: Token::True }); }
         if self.match_token(Token::False) { return Ok(Expr::Literal { value: Token::False }); }
+        if self.match_token(Token::Partial) { return Ok(Expr::Literal { value: Token::Partial }); }
         if self.match_token(Token::None) { return Ok(Expr::Literal { value: Token::None }); }
         if self.match_token(Token::Unknown) { return Ok(Expr::Literal { value: Token::Unknown }); }
 
-        let token_span = self.advance();
-        match &token_span.token {
-            Token::Number(_) | Token::String(_) => {
-                Ok(Expr::Literal { value: token_span.token.clone() })
-            }
-            Token::Identifier(_) => {
-                Ok(Expr::Variable { name: token_span.token.clone() })
-            }
-            Token::LParen => {
-                let expr = self.expression()?;
-                self.consume(Token::RParen, "Expect ')' after expression.")?;
-                Ok(Expr::Grouping { expression: Box::new(expr) })
-            }
-            Token::LBracket => {
-                let min = self.expression()?;
-                self.consume(Token::RangeSep, "Expect '..' in interval.")?;
-                let max = self.expression()?;
-                self.consume(Token::RBracket, "Expect ']' after interval.")?;
-                Ok(Expr::Interval { 
-                    min: Box::new(min), 
-                    max: Box::new(max) 
-                })
-            }
-            _ => Err(format!("Expect expression at line {}, col {}", token_span.line, token_span.column)),
+        if self.match_any(&[Token::Number(0.0), Token::String("".to_string())]) {
+            return Ok(Expr::Literal { value: self.previous().token.clone() });
         }
+
+        if self.match_token(Token::Identifier("".to_string())) || self.match_token(Token::Print) {
+            return Ok(Expr::Variable { name: self.previous().token.clone() });
+        }
+
+        if self.match_token(Token::LParen) {
+            let expr = self.expression()?;
+            self.consume(Token::RParen, "Expect ')' after expression.")?;
+            return Ok(Expr::Grouping { expression: Box::new(expr) });
+        }
+
+        if self.match_token(Token::LBracket) {
+            let min = self.expression()?;
+            self.consume(Token::RangeSep, "Expect '..' in interval.")?;
+            let max = self.expression()?;
+            self.consume(Token::RBracket, "Expect ']' after interval.")?;
+            return Ok(Expr::Interval { min: Box::new(min), max: Box::new(max) });
+        }
+
+        Err(format!("Expect expression, found {:?} at line {}", self.peek().token, self.peek().line))
+    }
+
+    fn end_stmt(&mut self) -> Result<(), String> {
+        if self.is_at_end() { return Ok(()); }
+        if self.match_token(Token::NewLine) { return Ok(()); }
+        Err(format!("Expect newline or EOF after statement, found {:?}", self.peek().token))
     }
 
     fn match_token(&mut self, t: Token) -> bool {
@@ -216,18 +242,29 @@ impl Parser {
         Err(format!("{} found {:?} at line {}", msg, self.peek().token, self.peek().line))
     }
 
-    fn consume_identifier(&mut self, msg: &str) -> Result<Token, String> {
-        let t = self.advance().token.clone();
-        match t {
-            Token::Identifier(_) => Ok(t),
-            _ => Err(format!("{} found {:?} at line {}", msg, t, self.previous().line)),
-        }
+    fn panic_statement(&mut self) -> Result<Stmt, String> {
+        self.end_stmt()?;
+        Ok(Stmt::Panic)
     }
 
-    fn end_stmt(&mut self) -> Result<(), String> {
-        if !self.is_at_end() && !self.match_token(Token::NewLine) {
-            return Err(format!("Expect newline after statement at line {}", self.previous().line));
+    fn peek_type(&self, t: Token) -> bool {
+        if self.is_at_end() { return false; }
+        std::mem::discriminant(&self.peek().token) == std::mem::discriminant(&t)
+    }
+
+    fn peek_next_type(&self, t: Token) -> bool {
+        if self.current + 1 >= self.tokens.len() { return false; }
+        std::mem::discriminant(&self.tokens[self.current + 1].token) == std::mem::discriminant(&t)
+    }
+
+    fn consume_identifier(&mut self, msg: &str) -> Result<Token, String> {
+        let t = self.peek().token.clone();
+        match t {
+            Token::Identifier(_) => {
+                self.advance();
+                Ok(t)
+            },
+            _ => Err(format!("{} found {:?} at line {}", msg, t, self.peek().line)),
         }
-        Ok(())
     }
 }

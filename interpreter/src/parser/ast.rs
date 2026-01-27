@@ -36,6 +36,11 @@ pub enum Expr {
         max: Box<Expr>,
     },
 
+    Call {
+        callee: Box<Expr>,
+        arguments: Vec<Expr>,
+    }
+
     // TODO: add more stuff later!
 }
 
@@ -53,10 +58,12 @@ pub enum Stmt {
         value: Expr,
     },
 
-    // print x
+    // print(x)
     Print {
         expression: Expr,
     },
+
+    Panic,
 
     // A simple expression like "5 + 5;" appearing as a statement
     Expression {

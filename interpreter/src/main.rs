@@ -7,13 +7,16 @@ const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use sk::SKInterpreter;
+use sk::core::value::Value;
 
 fn run(path: &Path) {
-    let interpreter = SKInterpreter::new();
+    let mut interpreter = SKInterpreter::new();
 
     match interpreter.execute(&path) {
-        Ok(result) => {
-            println!("{:?}", result);
+        Ok(value) => {
+            if value != Value::None {
+                println!("{}", value);
+            }
         }
         Err(e) => {
             log::error!("Runtime Error: {}", e);
@@ -41,7 +44,7 @@ fn main() {
         .init();
 
     let mut args = env::args().skip(1);
-
+    
     let path = match args.next() {
         Some(p) => PathBuf::from(p),
         None => {

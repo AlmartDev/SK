@@ -26,6 +26,7 @@ pub enum Token {
     For,
     While,
     Kind,
+    Comma,
 
     // Operators & Symbols
     Assign,      // =
@@ -80,7 +81,7 @@ pub fn tokenize(raw: String) -> Result<Vec<TokenSpan>, String> {
     lexer.tokenize()
 }
 
-struct Lexer {
+pub struct Lexer {
     source: Vec<char>,
     cursor: usize,
     line: usize,
@@ -112,11 +113,13 @@ impl Lexer {
                 });
             }
         }
+        
         tokens.push(TokenSpan { 
             token: Token::EOF, 
             line: self.line, 
             column: self.column 
         });
+        
         Ok(tokens)
     }
 
@@ -158,6 +161,7 @@ impl Lexer {
             ']' => Ok(Some(Token::RBracket)),
             '{' => Ok(Some(Token::LBrace)),
             '}' => Ok(Some(Token::RBrace)),
+            ',' => Ok(Some(Token::Comma)),
             '+' => Ok(Some(Token::Plus)),
             '*' => Ok(Some(Token::Star)),
             '^' => Ok(Some(Token::Caret)),
@@ -199,7 +203,7 @@ impl Lexer {
             }
             '.' => {
                 if self.match_char('.') { Ok(Some(Token::RangeSep)) } 
-                
+
                 else { Ok(Some(Token::UnknownChar('.'))) }
             }
 
@@ -217,7 +221,7 @@ impl Lexer {
             }
 
             // Whitespace
-            ' ' | '\r' | '\t' => Ok(None),     
+            ' ' | '\r' | '\t' => Ok(None), 
 
             '"' | '\'' => self.string(c).map(Some),
 
