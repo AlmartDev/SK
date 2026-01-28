@@ -41,6 +41,7 @@ fn check(path: &Path) -> Result<(), String> {
 fn main() {
     env_logger::Builder::new()
         .filter_level(log::LevelFilter::Warn)
+        .format_timestamp(None)
         .init();
 
     let args: Vec<String> = env::args().skip(1).collect();

@@ -1,0 +1,20 @@
+let a = 10
+symbolic live = a + 1
+
+print("Test 1: Formula View")
+print(live) 
+// (10.0 + 1.0)
+
+print("Test 2: Resolved View")
+print(resolve(live)) 
+// 11.0
+
+a = 20
+print("Test 3: Live Update Formula")
+print(live)
+// (20.0 + 1.0)
+
+quiet q = a + 5
+print("Test 4: Quiet View (No resolve needed)")
+print(q)
+// 25.0
