@@ -25,16 +25,38 @@ impl Parser {
         Ok(statements)
     }
 
-    fn declaration(&mut self) -> Result<Stmt, String> { // change this to a match later (symbolic, quiet, const, etc...)
-        if self.match_token(Token::Let) {
-            self.let_declaration()
-        } else if self.match_token(Token::Unknown) {
-            self.unknown_declaration()
-        } else if self.match_token(Token::Panic) {
-            self.panic_statement()
-        } else {
-            self.statement()
+    fn declaration(&mut self) -> Result<Stmt, String> {
+        match self.peek().token {
+            Token::Let => {
+                self.advance();
+                self.let_declaration()
+            }
+            Token::Symbolic => {
+                self.advance();
+                self.symbolic_declaration(false)
+            }
+            Token::Quiet => {
+                self.advance();
+                self.symbolic_declaration(true)
+            }
+            Token::Unknown => {
+                self.advance();
+                self.unknown_declaration()
+            }
+            Token::Panic => {
+                self.advance();
+                self.panic_statement()
+            }
+            _ => self.statement(),
         }
+    }
+
+    fn symbolic_declaration(&mut self, is_quiet: bool) -> Result<Stmt, String> {
+        let name = self.consume_identifier("Expect variable name.")?;
+        self.consume(Token::Assign, "Expect '=' after name.")?;
+        let initializer = self.expression()?;
+        self.end_stmt()?;
+        Ok(Stmt::Symbolic { name, initializer, is_quiet })
     }
 
     fn unknown_declaration(&mut self) -> Result<Stmt, String> {

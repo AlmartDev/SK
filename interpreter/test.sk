@@ -4,22 +4,21 @@
 // SK Programming Language
 
 unknown myvar // same as let myvar = unknown
-let variable = 67
+let number = 67
 let version = 1.0
 let interval = [0..1]
 let scientific = 10e3
 
 print("Hello, World!")
 
-variable = variable + 2
+number = number + scientific
 
 print(0*myvar)
-print(kind(variable))
-print(kind(str(variable)))
+print(number)
+print(kind(number))
+print(kind(str(number)))
 
-print("")
-print("SK Language version: " + str(version))
-print("")
+print("This is my fav variable:" + " " + str(interval))
 
 panic!
 

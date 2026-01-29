@@ -127,14 +127,6 @@ volume = side^3
 print(volume) // → unknown if side is unknown
 ```
 
-Constant Symbolics
-
-* Immutable symbolic expressions (const) cannot have their operands changed once created:
-
-```js
-const symbolic z = a + b
-```
-
 This guarantees the symbolic formula will not be altered during program execution.
 
 ### 4. Epistemic Control Flow

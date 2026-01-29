@@ -29,16 +29,15 @@ impl<'a> Evaluator<'a> {
                 }
                 Ok(Value::None)
             }
-            Stmt::Print { expression } => {
-                let val = self.eval_expr(expression)?;
-                println!("{}", val);
+            Stmt::Symbolic { name, initializer, is_quiet } => {
+                if let Token::Identifier(n) = name {
+                    self.env.define(n, Value::Symbolic { 
+                        expression: Box::new(initializer), 
+                        is_quiet 
+                    });
+                }
                 Ok(Value::None)
             }
-            Stmt::Panic => {
-                eprintln!("Program panicked!");
-                std::process::exit(1);
-            }
-            Stmt::Expression { expression } => self.eval_expr(expression),
             Stmt::Assign { name, value } => {
                 let val = self.eval_expr(value)?;
                 if let Token::Identifier(n) = name {
@@ -46,6 +45,90 @@ impl<'a> Evaluator<'a> {
                 }
                 Ok(Value::None)
             }
+            Stmt::Print { expression } => {
+                let val = self.eval_expr(expression)?;
+                self.print_value(val)?;
+                Ok(Value::None)
+            }
+            Stmt::Panic => {
+                eprintln!("Program panicked!");
+                std::process::exit(1);
+            }
+            Stmt::Expression { expression } => self.eval_expr(expression),
+        }
+    }
+
+    fn print_value(&mut self, val: Value) -> Result<(), String> {
+        match val {
+            Value::Symbolic { ref expression, is_quiet } => {
+                if is_quiet {
+                    let resolved = self.eval_expr(*expression.clone())?;
+                    println!("{}", resolved);
+                } else {
+                    println!("{}", self.format_symbolic(expression));
+                }
+            }
+            _ => println!("{}", val),
+        }
+        Ok(())
+    }
+
+    fn format_symbolic(&self, expr: &Expr) -> String {
+        match expr {
+            Expr::Binary { left, operator, right } => {
+                let l = self.format_symbolic(left);
+                let r = self.format_symbolic(right);
+                let op = match operator {
+                    Token::Plus => "+",
+                    Token::Minus => "-",
+                    Token::Star => "*",
+                    Token::Slash => "/",
+                    _ => "?",
+                };
+                format!("({} {} {})", l, op, r)
+            }
+            Expr::Literal { value } => match value {
+                Token::Number(n) => format!("{}", n),
+                Token::Unknown => "unknown".to_string(),
+                Token::String(s) => s.clone(),
+                _ => format!("{:?}", value),
+            },
+            Expr::Variable { name } => {
+                if let Token::Identifier(n) = name {
+                    n.clone()
+                } else {
+                    format!("{:?}", name)
+                }
+            }
+            Expr::Grouping { expression } => format!("({})", self.format_symbolic(expression)),
+            _ => "...".to_string(),
+        }
+    }
+
+    fn value_to_token(&self, value: Value) -> Token {
+        match value {
+            Value::Number(n) => Token::Number(n),
+            Value::String(s) => Token::String(s),
+            Value::Bool(SKBool::True) => Token::True,
+            Value::Bool(SKBool::False) => Token::False,
+            Value::Bool(SKBool::Partial) => Token::Partial,
+            Value::Unknown => Token::Unknown,
+            Value::None => Token::None,
+            Value::Interval(_, _) => Token::Unknown,
+            Value::Symbolic { .. } => Token::Unknown,
+        }
+    }
+
+    fn get_func_name(&self, expr: &Expr) -> Option<String> {
+        match expr {
+            Expr::Variable { name } => match name {
+                Token::Identifier(n) => Some(n.clone()),
+                Token::Print => Some("print".to_string()),
+                Token::Kind => Some("kind".to_string()),
+                _ => None,
+            },
+            Expr::Grouping { expression } => self.get_func_name(expression),
+            _ => None,
         }
     }
 
@@ -60,15 +143,15 @@ impl<'a> Evaluator<'a> {
                 Token::Unknown => Ok(Value::Unknown),
                 Token::None => Ok(Value::None),
                 _ => Err(format!("Unsupported literal: {:?}", value)),
-            },
+            }
 
             Expr::Variable { name } => {
                 if let Token::Identifier(n) = name {
                     self.env.get(&n)
                 } else {
-                    Err("Invalid identifier for variable lookup".to_string())
+                    Err(format!("Cannot use keyword '{:?}' as a variable", name))
                 }
-            },
+            }
 
             Expr::Interval { min, max } => {
                 let low = self.eval_expr(*min)?;
@@ -77,13 +160,13 @@ impl<'a> Evaluator<'a> {
                     (Value::Number(l), Value::Number(h)) => Ok(Value::Interval(l, h)),
                     _ => Err("Interval bounds must be numbers".to_string()),
                 }
-            },
+            }
 
             Expr::Binary { left, operator, right } => {
                 let l_val = self.eval_expr(*left)?;
                 let r_val = self.eval_expr(*right)?;
                 self.apply_binary(l_val, operator, r_val)
-            },
+            }
 
             Expr::Unary { operator, right } => {
                 let val = self.eval_expr(*right)?;
@@ -93,54 +176,70 @@ impl<'a> Evaluator<'a> {
                     (Token::Not, Value::Bool(SKBool::False)) => Ok(Value::Bool(SKBool::True)),
                     _ => Err("Invalid unary operation".to_string()),
                 }
-            },
+            }
 
             Expr::Grouping { expression } => self.eval_expr(*expression),
             Expr::Call { callee, arguments } => {
-                let name = match *callee {
-                    Expr::Variable { name } => match name {
-                        Token::Identifier(n) => n,
-                        Token::Print => "print".to_string(),
-                        Token::Kind => "kind".to_string(),
-                        Token::String(_) => "str".to_string(),
-                        _ => return Err("Only identifiers or built-in keywords can be called.".to_string()),
-                    },
-                    _ => return Err("Only identifiers can be called.".to_string()),
-                };
-
+                let func_name = self.get_func_name(&callee)
+                    .ok_or_else(|| format!("Invalid function call: expected identifier, found {:?}", callee))?;
                 let mut eval_args = Vec::new();
                 for arg in arguments {
                     eval_args.push(self.eval_expr(arg)?);
                 }
-
-                match name.as_str() {   // more primitive functions to be added here!
-                    "print" => {
-                        for arg in eval_args {
-                            println!("{}", arg);
+                match func_name.as_str() {    // more primitive functions to be added here!
+                    "resolve" => {
+                        if eval_args.len() != 1 { return Err("resolve() expects 1 arg".to_string()); }
+                        match eval_args[0].clone() {
+                            Value::Symbolic { expression, .. } => self.eval_expr(*expression),
+                            other => Ok(other),
                         }
-                        Ok(Value::None)
-                    },
+                    }
                     "kind" => {
-                        if eval_args.len() != 1 {
-                            return Err("kind() expects exactly 1 argument.".to_string());
-                        }
-                        let type_name = match eval_args[0] { // symbolic, quiet ...
+                        if eval_args.len() != 1 { return Err("kind() expects 1 arg".to_string()); }
+                        let type_name = match eval_args[0] {
+                            Value::Symbolic { is_quiet: true, .. } => "quiet",
+                            Value::Symbolic { is_quiet: false, .. } => "symbolic",
                             Value::Number(_) => "number",
                             Value::String(_) => "string",
                             Value::Bool(_) => "bool",
                             Value::Interval(_, _) => "interval",
                             Value::Unknown => "unknown",
-                            Value::None => "none",
+                            _ => "none",
                         };
                         Ok(Value::String(type_name.to_string()))
                     }
                     "str" => {
-                        if eval_args.len() != 1 {
-                            return Err("str() expects exactly 1 argument.".to_string());
+                        if eval_args.len() != 1 { return Err("str() expects 1 arg".to_string()); }
+                        match eval_args[0] {
+                            Value::Symbolic { ref expression, is_quiet } => {
+                                if is_quiet {
+                                    let resolved = self.eval_expr(*expression.clone())?;
+                                    Ok(Value::String(format!("{}", resolved)))
+                                } else {
+                                    Ok(Value::String(self.format_symbolic(expression)))
+                                }
+                            }
+                            _ => Ok(Value::String(format!("{}", eval_args[0]))),
                         }
-                        Ok(Value::String(format!("{}", eval_args[0])))
                     }
-                    _ => Err(format!("Undefined function '{}'.", name)),
+                    "print" => {
+                        for arg in eval_args {
+                            match arg {
+                                Value::Symbolic { ref expression, is_quiet } => {
+                                    if is_quiet {
+                                        let resolved = self.eval_expr(*expression.clone())?;
+                                        print!("{} ", resolved);
+                                    } else {
+                                        print!("{} ", self.format_symbolic(expression));
+                                    }
+                                }
+                                _ => print!("{} ", arg),
+                            }
+                        }
+                        println!();
+                        Ok(Value::None)
+                    }
+                    _ => Err(format!("Unknown function '{}'", func_name)),
                 }
             }
         }
@@ -164,15 +263,13 @@ impl<'a> Evaluator<'a> {
                 }
             }
 
-            (Value::Unknown, _, _) | (_, _, Value::Unknown) => Ok(Value::Unknown),
-
             (Value::Number(a), Token::Plus, Value::Number(b)) => Ok(Value::Number(a + b)),
             (Value::Number(a), Token::Minus, Value::Number(b)) => Ok(Value::Number(a - b)),
             (Value::Number(a), Token::Star, Value::Number(b)) => Ok(Value::Number(a * b)),
             (Value::Number(a), Token::Slash, Value::Number(b)) => {
                 if b == 0.0 { return Err("Division by zero".to_string()); }
                 Ok(Value::Number(a / b))
-            },
+            }
 
             // Interval & Number
             (Value::Interval(min, max), Token::Plus, Value::Number(n)) |
@@ -201,8 +298,39 @@ impl<'a> Evaluator<'a> {
                     p.iter().copied().fold(f64::INFINITY, f64::min),
                     p.iter().copied().fold(f64::NEG_INFINITY, f64::max)
                 ))
-            },
+            }
 
+            (Value::Symbolic { expression: e1, is_quiet: q1 }, _, val2) => {
+                Ok(Value::Symbolic {
+                    expression: Box::new(Expr::Binary {
+                        left: e1,
+                        operator: op,
+                        right: Box::new(Expr::Literal { value: self.value_to_token(val2) }),
+                    }),
+                    is_quiet: q1,
+                })
+            }
+            (val1, _, Value::Symbolic { expression: e2, is_quiet: q2 }) => {
+                Ok(Value::Symbolic {
+                    expression: Box::new(Expr::Binary {
+                        left: Box::new(Expr::Literal { value: self.value_to_token(val1) }),
+                        operator: op,
+                        right: e2,
+                    }),
+                    is_quiet: q2,
+                })
+            }
+            (Value::Unknown, _, _) | (_, _, Value::Unknown) => {
+                Ok(Value::Symbolic {
+                    expression: Box::new(Expr::Binary {
+                        left: Box::new(Expr::Literal { value: self.value_to_token(left) }),
+                        operator: op,
+                        right: Box::new(Expr::Literal { value: self.value_to_token(right) }),
+                    }),
+                    is_quiet: false,
+                })
+            }
+            
             // String Concatenation!
             (Value::String(mut s1), Token::Plus, Value::String(s2)) => {
                 s1.push_str(&s2);

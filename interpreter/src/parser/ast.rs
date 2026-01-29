@@ -58,6 +58,12 @@ pub enum Stmt {
         value: Expr,
     },
 
+    Symbolic {
+        name: Token,
+        initializer: Expr,
+        is_quiet: bool,
+    },
+
     // print(x)
     Print {
         expression: Expr,
