@@ -1,0 +1,8 @@
+let x = [10..20]
+
+if x > 15 -> panic { 
+    print("Branch A")
+} else {
+    print("Branch B")
+}
+

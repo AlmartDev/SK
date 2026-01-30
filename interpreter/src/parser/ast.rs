@@ -47,6 +47,13 @@ pub enum Expr {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum IfPolicy {
+    Strict,
+    Merge,
+    Panic,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
     // let x = 5
     Let {
@@ -80,5 +87,12 @@ pub enum Stmt {
 
     Block {
         statements: Vec<Stmt>,
+    },
+
+    If {
+        condition: Expr,
+        policy: IfPolicy,
+        then_branch: Box<Stmt>,
+        else_branch: Option<Box<Stmt>>,
     }
 }

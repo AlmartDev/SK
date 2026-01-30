@@ -281,9 +281,10 @@ impl Lexer {
             "else" => Token::Else,
             "merge" => Token::Merge,
             "strict" => Token::Strict,
+            "panic!" => Token::Panic, // The statement
+            "panic" => Token::Panic,  // The policy
             "print" => Token::Print,
             "input" => Token::Input,
-            "panic!" => Token::Panic,
             "fn" => Token::Fn,
             "return" => Token::Return,
             "for" => Token::For,

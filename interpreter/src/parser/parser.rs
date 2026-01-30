@@ -1,5 +1,5 @@
 use crate::parser::lexer::{Token, TokenSpan};
-use crate::parser::ast::{Stmt, Expr};
+use crate::parser::ast::{Expr, IfPolicy, Stmt};
 
 pub struct Parser {
     tokens: Vec<TokenSpan>,
@@ -43,6 +43,10 @@ impl Parser {
                 self.advance();
                 self.unknown_declaration()
             }
+            Token::If => {
+                self.advance();
+                self.if_statement()
+            },
             Token::Panic => {
                 self.advance();
                 self.panic_statement()
@@ -67,6 +71,46 @@ impl Parser {
             name, 
             initializer: Expr::Literal { value: Token::Unknown } 
         })
+    }
+
+    fn if_statement(&mut self) -> Result<Stmt, String> {
+        let condition = self.expression()?;
+
+        let mut policy = IfPolicy::Strict;
+        if self.match_token(Token::Arrow) {
+            if self.match_token(Token::Strict) { 
+                policy = IfPolicy::Strict; 
+            } else if self.match_token(Token::Merge) { 
+                policy = IfPolicy::Merge; 
+            } else if self.is_panic_keyword() { // Custom check
+                policy = IfPolicy::Panic; 
+            } else { 
+                return Err(format!("Expect policy after '->', found {:?}", self.peek().token)); 
+            }
+        }
+
+        let then_branch = Box::new(self.statement()?);
+
+        let mut else_branch = None;
+        if self.match_token(Token::Else) {
+            else_branch = Some(Box::new(self.statement()?));
+        }
+
+        Ok(Stmt::If { condition, policy, then_branch, else_branch })
+    }
+
+    fn is_panic_keyword(&mut self) -> bool {
+        match &self.peek().token {
+            Token::Panic => {
+                self.advance();
+                true
+            }
+            Token::Identifier(s) if s == "panic" => {
+                self.advance();
+                true
+            }
+            _ => false,
+        }
     }
 
     fn let_declaration(&mut self) -> Result<Stmt, String> {
