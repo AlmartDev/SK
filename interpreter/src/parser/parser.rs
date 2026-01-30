@@ -72,14 +72,18 @@ impl Parser {
     fn let_declaration(&mut self) -> Result<Stmt, String> {
         let name = self.consume_identifier("Expect variable name.")?;
         self.consume(Token::Assign, "Expect '=' after variable name.")?;
-
-        let initializer = self.expression()?;
-
+        
+        let initializer = self.expression()?; 
+        
         self.end_stmt()?;
         Ok(Stmt::Let { name, initializer })
     }
 
     fn statement(&mut self) -> Result<Stmt, String> {
+        if self.match_token(Token::LBrace) {
+            return Ok(Stmt::Block { statements: self.block()? });
+        }
+
         // Check for assignment: identifier = expression
         if self.peek_type(Token::Identifier(String::new())) && self.peek_next_type(Token::Assign) {
             let name = self.advance().token.clone();
@@ -108,6 +112,20 @@ impl Parser {
 
         self.end_stmt()?;
         Ok(Stmt::Expression { expression: expr })
+    }
+
+    fn block(&mut self) -> Result<Vec<Stmt>, String> {
+        let mut statements = Vec::new();
+
+        while !self.check(&Token::RBrace) && !self.is_at_end() {
+            if self.match_token(Token::NewLine) {
+                continue;
+            }
+            statements.push(self.declaration()?);
+        }
+
+        self.consume(Token::RBrace, "Expect '}' after block.")?;
+        Ok(statements)
     }
 
     pub fn expression(&mut self) -> Result<Expr, String> {
@@ -261,6 +279,11 @@ impl Parser {
         if self.match_token(Token::Partial) { return Ok(Expr::Literal { value: Token::Partial }); }
         if self.match_token(Token::None) { return Ok(Expr::Literal { value: Token::None }); }
         if self.match_token(Token::Unknown) { return Ok(Expr::Literal { value: Token::Unknown }); }
+
+        if self.match_token(Token::LBrace) {
+            let statements = self.block()?;
+            return Ok(Expr::Block { statements });
+        }
 
         if self.match_any(&[Token::Number(0.0), Token::String("".to_string())]) {
             return Ok(Expr::Literal { value: self.previous().token.clone() });

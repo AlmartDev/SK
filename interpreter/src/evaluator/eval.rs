@@ -3,13 +3,15 @@ use crate::parser::lexer::Token;
 use crate::core::value::{Value, SKBool};
 use crate::core::logic;
 use crate::evaluator::env::Environment;
+use std::rc::Rc;
+use std::cell::RefCell;
 
-pub struct Evaluator<'a> {
-    env: &'a mut Environment,
+pub struct Evaluator {
+    env: Rc<RefCell<Environment>>,
 }
 
-impl<'a> Evaluator<'a> {
-    pub fn new(env: &'a mut Environment) -> Self {
+impl Evaluator {
+    pub fn new(env: Rc<RefCell<Environment>>) -> Self {
         Self { env }
     }
 
@@ -21,18 +23,50 @@ impl<'a> Evaluator<'a> {
         Ok(last_value)
     }
 
+    fn execute_block(&mut self, statements: Vec<Stmt>, env: Environment) -> Result<Value, String> {
+        let previous = self.env.clone();
+        self.env = Rc::new(RefCell::new(env));
+
+        let mut last_value = Value::None;
+        let len = statements.len();
+
+        // Use into_iter to take ownership of statements
+        for (i, stmt) in statements.into_iter().enumerate() {
+            let is_last = i == len - 1;
+
+            match stmt {
+                // Only a bare expression on the last line can a value.
+                Stmt::Expression { expression } if is_last => {
+                    last_value = self.eval_expr(expression)?;
+                }
+                // Or return none
+                _ => {
+                    self.eval_stmt(stmt)?;
+                    last_value = Value::None;
+                }
+            }
+        }
+
+        self.env = previous;
+        Ok(last_value)
+    }
+
     fn eval_stmt(&mut self, stmt: Stmt) -> Result<Value, String> {
         match stmt {
+            Stmt::Block { statements } => {
+                let new_env = Environment::new_enclosed(self.env.clone());
+                self.execute_block(statements, new_env)
+            }
             Stmt::Let { name, initializer } => {
                 let val = self.eval_expr(initializer)?;
                 if let Token::Identifier(n) = name {
-                    self.env.define(n, val);
+                    self.env.borrow_mut().define(n, val);
                 }
                 Ok(Value::None)
             }
             Stmt::Symbolic { name, initializer, is_quiet } => {
                 if let Token::Identifier(n) = name {
-                    self.env.define(n, Value::Symbolic { 
+                    self.env.borrow_mut().define(n, Value::Symbolic { 
                         expression: Box::new(initializer), 
                         is_quiet 
                     });
@@ -42,7 +76,7 @@ impl<'a> Evaluator<'a> {
             Stmt::Assign { name, value } => {
                 let val = self.eval_expr(value)?;
                 if let Token::Identifier(n) = name {
-                    self.env.define(n, val);
+                    self.env.borrow_mut().assign(&n, val)?;
                 }
                 Ok(Value::None)
             }
@@ -114,6 +148,7 @@ impl<'a> Evaluator<'a> {
                 }
             }
             Expr::Grouping { expression } => format!("({})", self.format_symbolic(expression)),
+            Expr::Block { .. } => "{...}".to_string(),
             _ => "...".to_string(),
         }
     }
@@ -145,7 +180,7 @@ impl<'a> Evaluator<'a> {
                 Token::Impossible => Some("impossible".to_string()),
                 Token::Str => Some("str".to_string()),
                 Token::Num => Some("num".to_string()),
-                
+
                 _ => None,
             },
             Expr::Grouping { expression } => self.get_func_name(expression),
@@ -155,6 +190,11 @@ impl<'a> Evaluator<'a> {
 
     fn eval_expr(&mut self, expr: Expr) -> Result<Value, String> {
         match expr {
+            Expr::Block { statements } => {
+                let new_env = Environment::new_enclosed(self.env.clone());
+                self.execute_block(statements, new_env)
+            }
+
             Expr::Literal { value } => match value {
                 Token::Number(n) => Ok(Value::Number(n)),
                 Token::String(s) => Ok(Value::String(s)),
@@ -168,7 +208,7 @@ impl<'a> Evaluator<'a> {
 
             Expr::Variable { name } => {
                 if let Token::Identifier(n) = name {
-                    self.env.get(&n)
+                    self.env.borrow().get(&n)
                 } else {
                     Err(format!("Cannot use keyword '{:?}' as a variable", name))
                 }
@@ -244,7 +284,7 @@ impl<'a> Evaluator<'a> {
                     }
                     "num" => {
                         if eval_args.len() != 1 { return Err("num() expects 1 arg".to_string()); }
-                        
+
                         match &eval_args[0] {
                             Value::String(s) => {
                                 s.parse::<f64>()
@@ -275,7 +315,7 @@ impl<'a> Evaluator<'a> {
                     "input" => {
                         use std::io::{self, Write};
                         if eval_args.len() > 1 { return Err("input() expects 0 or 1 arg".to_string()); }
-                        
+
                         if let Some(prompt) = eval_args.get(0) {
                             print!("{}", prompt);
                             io::stdout().flush().map_err(|e| e.to_string())?;
@@ -283,7 +323,7 @@ impl<'a> Evaluator<'a> {
 
                         let mut buffer = String::new();
                         io::stdin().read_line(&mut buffer).map_err(|e| e.to_string())?;
-                        
+
                         Ok(Value::String(buffer.trim_end().to_string()))
                     }
                     "certain" => {
@@ -335,7 +375,7 @@ impl<'a> Evaluator<'a> {
 
             // Self-Subtraction: x - x = 0 (even if x is unknown or an interval)
             (l, Token::Minus, r) if l == r && l != Value::Unknown => Ok(Value::Number(0.0)),
-            
+                        
             // Division by Self: x / x = 1 (excluding zero/unknown/intervals containing zero)
             (l, Token::Slash, r) if l == r => {
                 match l {
@@ -346,15 +386,15 @@ impl<'a> Evaluator<'a> {
             }
 
             (Value::Number(a), Token::Caret, Value::Number(b)) => Ok(Value::Number(a.powf(b))),
-
+            
             (Value::Interval(min, max), Token::Caret, Value::Number(n)) => {
                 if n % 2.0 == 0.0 {
                     let p1 = min.powf(n);
                     let p2 = max.powf(n);
                     let mut low = p1.min(p2);
                     let high = p1.max(p2);
-                    if min <= 0.0 && max >= 0.0 {
-                        low = 0.0;
+                    if min <= 0.0 && max >= 0.0 { 
+                        low = 0.0; 
                     }
                     Ok(Value::Interval(low, high))
                 } else {
@@ -375,10 +415,10 @@ impl<'a> Evaluator<'a> {
             // Interval & Number
             (Value::Interval(min, max), Token::Plus, Value::Number(n)) |
             (Value::Number(n), Token::Plus, Value::Interval(min, max)) => Ok(Value::Interval(min + n, max + n)),
-            
+
             (Value::Interval(min, max), Token::Minus, Value::Number(n)) => Ok(Value::Interval(min - n, max - n)),
             (Value::Number(n), Token::Minus, Value::Interval(min, max)) => Ok(Value::Interval(n - max, n - min)),
-
+           
             (Value::Interval(min, max), Token::Star, Value::Number(n)) |
             (Value::Number(n), Token::Star, Value::Interval(min, max)) => {
                 let a = min * n;
@@ -418,7 +458,7 @@ impl<'a> Evaluator<'a> {
             }
             (Value::String(s1), Token::BangEqual, Value::String(s2)) => {
                 Ok(Value::Bool(if s1 != s2 { SKBool::True } else { SKBool::False }))
-            }
+            }            
 
             (Value::Interval(min1, max1), operator, Value::Interval(min2, max2)) => {
                 let op_str = match operator {
@@ -462,7 +502,7 @@ impl<'a> Evaluator<'a> {
             (_, Value::Symbolic { is_quiet: q, .. }) => *q,
             _ => false,
         };
-
+        
         Ok(Value::Symbolic {
             expression: Box::new(Expr::Binary {
                 left: Box::new(Expr::Literal { value: self.value_to_token(left) }),

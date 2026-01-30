@@ -1,5 +1,7 @@
 use std::path::Path;
 use std::fs;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 pub mod core;
 pub mod parser;
@@ -10,18 +12,16 @@ use crate::parser::parser::Parser;
 use crate::evaluator::eval::Evaluator;
 use crate::evaluator::env::Environment;
 use crate::core::value::Value;
-
-// only needed for debug
 use crate::parser::ast::Stmt;
 
 pub struct SKInterpreter {
-    env: Environment,
+    env: Rc<RefCell<Environment>>,
 }
 
 impl SKInterpreter {
     pub fn new() -> Self {
         Self {
-            env: Environment::new(),
+            env: Rc::new(RefCell::new(Environment::new())),
         }
     }
 
@@ -34,9 +34,7 @@ impl SKInterpreter {
         let mut parser = Parser::new(tokens);
         let ast = parser.parse()?;
 
-        //self._debug_ast(&ast);
-
-        let mut evaluator = Evaluator::new(&mut self.env);
+        let mut evaluator = Evaluator::new(self.env.clone());
         evaluator.evaluate(ast)
     }
 

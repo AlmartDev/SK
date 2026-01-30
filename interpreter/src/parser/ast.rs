@@ -36,12 +36,14 @@ pub enum Expr {
         max: Box<Expr>,
     },
 
+    Block { 
+        statements: Vec<Stmt> 
+    },
+
     Call {
         callee: Box<Expr>,
         arguments: Vec<Expr>,
     }
-
-    // TODO: add more stuff later!
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -75,6 +77,8 @@ pub enum Stmt {
     Expression {
         expression: Expr,
     },
-    
-    // TODO: add more stuff later!
+
+    Block {
+        statements: Vec<Stmt>,
+    }
 }

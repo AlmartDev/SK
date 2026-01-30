@@ -67,6 +67,12 @@ pub enum Token {
     Certain,
     Known,
 
+    // Interval Operators
+    Width, // max - min
+    Mid,   // midpoint
+    Intersect, // returns overlapping of two intervals!
+    Union,     // returns the smallest interval that contains both
+
     True,
     False,
     Partial,
