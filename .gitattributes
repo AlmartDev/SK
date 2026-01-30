@@ -1,1 +1,2 @@
-*.sk linguist-language=SK
+*.sk linguist-language=Rust # for coloring!
+*.sk linguist-vendored
