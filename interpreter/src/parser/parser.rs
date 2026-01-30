@@ -268,10 +268,15 @@ impl Parser {
 
         if self.match_token(Token::Identifier("".to_string())) 
             || self.match_token(Token::Print) 
-            || self.match_token(Token::Kind)  
+            || self.match_token(Token::Input)
+            || self.match_token(Token::Kind)
+            || self.match_token(Token::Certain)
+            || self.match_token(Token::Known)
+            || self.match_token(Token::Possible)
+            || self.match_token(Token::Impossible)
             || self.match_token(Token::String("".to_string())) {
 
-            return Ok(Expr::Variable { name: self.previous().token.clone() }); // Just return, don't call finish_call
+            return Ok(Expr::Variable { name: self.previous().token.clone() });
         }
 
         if self.match_token(Token::LParen) {

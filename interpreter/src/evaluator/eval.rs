@@ -137,7 +137,12 @@ impl<'a> Evaluator<'a> {
             Expr::Variable { name } => match name {
                 Token::Identifier(n) => Some(n.clone()),
                 Token::Print => Some("print".to_string()),
+                Token::Input => Some("input".to_string()),
                 Token::Kind => Some("kind".to_string()),
+                Token::Certain => Some("certain".to_string()),
+                Token::Known => Some("known".to_string()),
+                Token::Possible => Some("possible".to_string()),
+                Token::Impossible => Some("impossible".to_string()),
                 _ => None,
             },
             Expr::Grouping { expression } => self.get_func_name(expression),
@@ -250,6 +255,55 @@ impl<'a> Evaluator<'a> {
                         }
                         println!();
                         Ok(Value::None)
+                    }
+                    "input" => {
+                        use std::io::{self, Write};
+                        if eval_args.len() > 1 { return Err("input() expects 0 or 1 arg".to_string()); }
+                        
+                        if let Some(prompt) = eval_args.get(0) {
+                            print!("{}", prompt);
+                            io::stdout().flush().map_err(|e| e.to_string())?;
+                        }
+
+                        let mut buffer = String::new();
+                        io::stdin().read_line(&mut buffer).map_err(|e| e.to_string())?;
+                        
+                        Ok(Value::String(buffer.trim_end().to_string()))
+                    }
+                    "certain" => {
+                        if eval_args.len() != 1 { return Err("certain() expects 1 arg".to_string()); }
+                        let res = match eval_args[0] {
+                            Value::Bool(SKBool::True) => SKBool::True,
+                            _ => SKBool::False,
+                        };
+                        Ok(Value::Bool(res))
+                    }
+                    "possible" => {
+                        if eval_args.len() != 1 { return Err("possible() expects 1 arg".to_string()); }
+                        let res = match eval_args[0] {
+                            Value::Bool(SKBool::False) => SKBool::False,
+                            _ => SKBool::True,
+                        };
+                        Ok(Value::Bool(res))
+                    }
+                    "impossible" => {
+                        if eval_args.len() != 1 { return Err("impossible() expects 1 arg".to_string()); }
+                        let res = match eval_args[0] {
+                            Value::Bool(SKBool::False) => SKBool::True,
+                            _ => SKBool::False,
+                        };
+                        Ok(Value::Bool(res))
+                    }
+                    "known" => {
+                        if eval_args.len() != 1 { return Err("known() expects 1 arg".to_string()); }
+                        let res = match eval_args[0] {
+                            Value::Bool(SKBool::Partial) | 
+                            Value::Unknown | 
+                            Value::Interval(_, _) | 
+                            Value::Symbolic { .. } => SKBool::False,
+                            _ => SKBool::True,
+                        };
+                        Ok(Value::Bool(res))
                     }
                     _ => Err(format!("Unknown function '{}'", func_name)),
                 }

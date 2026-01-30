@@ -1,5 +1,13 @@
 print("a" == "a")
 
+let val = [10..20]
+let check = val > 15
+
+print(check)             
+print(certain(check))    
+print(possible(check))   
+print(known(val))
+
 print(true && false)
 print(true || false)
 print(!partial)
