@@ -1,2 +1,3 @@
-*.sk linguist-language=Rust # for coloring!
-*.sk linguist-vendored
+*.sk linguist-language=Rust
+*.sk linguist-detectable=true
+*.sk -linguist-generated
