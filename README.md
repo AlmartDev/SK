@@ -1,4 +1,4 @@
-# SK Programming Language
+# The SK Programming Language
 
 ## Overview
 
@@ -6,9 +6,18 @@ SK is a conceptual programming language designed to handle incomplete, approxima
 
 The language is designed for **safer, more honest, and analyzable computation** in contexts where data may be noisy, incomplete, or evolving.
 
+## Rust Interpreter
+
+The final version of SK is in the works with a full scale rust interpreter.
+
+```sh
+cargo build
+./sk examples.sk
+```
+
 ## Python Prototype
 
-For the moment, SK is implemented as a **Python-based prototype**. This allows experimenting with the core concepts of uncertain values, intervals, and symbolic expressions using Python classes and operator overloading. Variables such as `SValue`, `SSymbolic`, and their variants simulate the behavior of the language, while arithmetic operations automatically propagate uncertainty and generate symbolic expressions when operands are unknown or partially known. This approach provides a flexible environment to test and refine the semantics of SK before developing a full compiler or interpreter.
+The SK prototype is implemented as a **Python-based prototype**. This allows experimenting with the core concepts of uncertain values, intervals, and symbolic expressions using Python classes and operator overloading. Variables such as `SValue`, `SSymbolic`, and their variants simulate the behavior of the language, while arithmetic operations automatically propagate uncertainty and generate symbolic expressions when operands are unknown or partially known. This approach provides a flexible environment to test and refine the semantics of SK before developing a full compiler or interpreter.
 
 In order to run the python sk tests:
 
@@ -59,11 +68,6 @@ volume = side^3
 ```
 
 * **Constant symbolics** – immutable symbolic expressions:
-
-```js
-const symbolic k = a + b
-const quiet j = a + (2 * b)
-```
 
 ### 2. Operators
 
