@@ -1,7 +1,16 @@
 [package]
-name = "sk"
-version = "0.4.2"
+name = "sk-lang"
+description = "The SK Programming Language interpreter"
+version = "0.6.1"
 edition = "2024"
+repository = "https://github.com/AlmartDev/SK"
+homepage = "https://sk-lang.vercel.app"
+license = "MIT"
+keywords = ["programming-language"]
+
+[[bin]]
+name = "SK"
+path = "src/main.rs"
 
 [dependencies]
 env_logger = "0.11.8"

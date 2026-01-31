@@ -7,8 +7,8 @@ use rustyline::DefaultEditor;
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-use sk::SKInterpreter;
-use sk::core::value::Value;
+use sk_lang::SKInterpreter;
+use sk_lang::core::value::Value;
 
 fn run(path: &Path) {
     let mut interpreter = SKInterpreter::new();
@@ -95,6 +95,11 @@ fn main() {
 
     if args.contains(&"--version".to_string()) {
         println!("{} v.{}", NAME, VERSION);
+        process::exit(0);
+    }
+
+    if args.contains(&"--help".to_string()) {
+        help();
         process::exit(0);
     }
 
