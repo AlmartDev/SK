@@ -186,12 +186,30 @@ unknown x > 0        // x is unknown but positive
 unknown y % 2 == 0   // y is unknown but even
 ```
 
-## Flavortown Hackclub
+## VS Code Extensions
+
+SK has a language support extension for Visual Studio Code that includes small refinements to make working with SK easier.
+
+* Download the latest version in the Releases page or build the extension yourself inside ```extensions/vscode``` with:
+
+```sh
+cd extensions/vscode
+vsce package
+```
+
+* To install, inside vscode, go to Extensions (```Ctrl + Shift + X```) and select the option from the menu ```Install from VSIX...```
+
+## Hackclub
 
 Proud member of HackClub!
 
 <div align="center">
-  <a href="<https://flavortown.hackclub.com/projects/8834>">
+  <a href="https://flavortown.hackclub.com/projects/8834">
     <img src="https://assets.hackclub.com/flag-standalone.svg" alt="Hack Club" width="150" />
   </a>
 </div>
+
+### Inspiration
+
+Took many cool ideas from this other project, ty! @cyteon
+[modu language github repo](https://github.com/cyteon/modu)

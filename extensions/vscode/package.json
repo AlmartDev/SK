@@ -1,0 +1,33 @@
+{
+  "name": "sk-lang",
+  "displayName": "SK-Lang",
+  "description": "The SK Programming Language VSCode Extension!",
+  "version": "0.4.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AlmartDev/SK"
+  },
+  "engines": {
+    "vscode": "^1.108.1"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "sk",
+      "aliases": ["SK", "sk"],
+      "extensions": [".sk"],
+      "configuration": "./language-configuration.json",
+      "icon": {
+          "light": "skfileicon.png",
+          "dark": "skfileicon.png"
+        }
+    }],
+    "grammars": [{
+      "language": "sk",
+      "scopeName": "source.sk",
+      "path": "./syntaxes/sk.tmLanguage.json"
+    }]
+  }
+}
