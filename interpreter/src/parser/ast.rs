@@ -1,4 +1,3 @@
-
 use crate::parser::lexer::Token;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -93,6 +92,7 @@ pub enum Stmt {
         condition: Expr,
         policy: IfPolicy,
         then_branch: Box<Stmt>,
+        elif_branch: Vec<(Expr, Stmt)>, // List of (condition, body)
         else_branch: Option<Box<Stmt>>,
     }
 }

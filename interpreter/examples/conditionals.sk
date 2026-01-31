@@ -1,8 +1,10 @@
-unknown x
+let x = [10..20]
 
-if x > 15 -> panic { 
+if x > 15 -> merge { 
     print("Branch A")
-} else {
+} elif x < 30 {
     print("Branch B")
+} else {
+    print("Branch C")
 }
 

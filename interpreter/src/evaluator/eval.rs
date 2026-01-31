@@ -94,49 +94,8 @@ impl Evaluator {
                 std::process::exit(1);
             }
             Stmt::Expression { expression } => self.eval_expr(expression),
-            Stmt::If { condition, policy, then_branch, else_branch } => {
-                let cond_val = self.eval_expr(condition)?;
-                let sk_bool = match cond_val {
-                    Value::Bool(b) => b,
-                    _ => return Err("If condition must be a boolean".to_string()),
-                };
-
-                match sk_bool {
-                    SKBool::True => self.eval_stmt(*then_branch),
-                    SKBool::False => {
-                        if let Some(eb) = else_branch {
-                            self.eval_stmt(*eb)
-                        } else {
-                            Ok(Value::None)
-                        }
-                    }
-                    SKBool::Partial => match policy {
-                        IfPolicy::Strict => Ok(Value::None),
-                        IfPolicy::Panic => {
-                            eprintln!("Program panicked! Uncertain condition with panic policy.");
-                            std::process::exit(1);
-                        }
-                        IfPolicy::Merge => {
-                            let val_then = self.eval_stmt(*then_branch)?;
-                            let val_else = if let Some(eb) = else_branch {
-                                self.eval_stmt(*eb)?
-                            } else {
-                                Value::None
-                            };
-
-                            match (val_then, val_else) {
-                                (Value::Number(n1), Value::Number(n2)) => 
-                                    Ok(Value::Interval(n1.min(n2), n1.max(n2))),
-                                (Value::Interval(l1, h1), Value::Interval(l2, h2)) => 
-                                    Ok(Value::Interval(l1.min(l2), h1.max(h2))),
-                                (Value::Number(n), Value::Interval(l, h)) | (Value::Interval(l, h), Value::Number(n)) =>
-                                    Ok(Value::Interval(n.min(l), n.max(h))),
-                                (v1, v2) if v1 == v2 => Ok(v1),
-                                _ => Ok(Value::Unknown),
-                            }
-                        }
-                    }
-                }
+            Stmt::If { condition, policy, then_branch, elif_branch, else_branch } => {
+                self.eval_if_chain(condition, *then_branch, &elif_branch, &else_branch, policy)
             }
         }
     }
@@ -154,6 +113,67 @@ impl Evaluator {
             _ => println!("{}", val),
         }
         Ok(())
+    }
+
+    fn eval_if_chain(
+        &mut self,
+        cond_expr: Expr,
+        body: Stmt,
+        remaining_elifs: &[(Expr, Stmt)],
+        else_branch: &Option<Box<Stmt>>,
+        policy: IfPolicy
+    ) -> Result<Value, String> {
+        let cond_val = self.eval_expr(cond_expr)?;
+        let sk_bool = match cond_val {
+            Value::Bool(b) => b,
+            _ => return Err("Condition must be a boolean".to_string()),
+        };
+
+        match sk_bool {
+            SKBool::True => self.eval_stmt(body),
+            SKBool::False => self.eval_next_in_chain(remaining_elifs, else_branch, policy),
+            SKBool::Partial => match policy {
+                IfPolicy::Strict => {
+                    self.eval_next_in_chain(remaining_elifs, &None, policy)
+                }
+                IfPolicy::Panic => {
+                    eprintln!("Program panicked! Uncertain condition with panic policy.");
+                    std::process::exit(1);
+                }
+                IfPolicy::Merge => {
+                    let val_true = self.eval_stmt(body)?;
+                    let val_false = self.eval_next_in_chain(remaining_elifs, else_branch, policy)?;
+                    self.merge_values(val_true, val_false)
+                }
+            },
+        }
+    }
+
+    fn eval_next_in_chain(
+        &mut self,
+        elifs: &[(Expr, Stmt)],
+        else_branch: &Option<Box<Stmt>>,
+        policy: IfPolicy
+    ) -> Result<Value, String> {
+        if let Some(((next_cond, next_body), rest)) = elifs.split_first() {
+            self.eval_if_chain(next_cond.clone(), next_body.clone(), rest, else_branch, policy)
+        } else if let Some(eb) = else_branch {
+            self.eval_stmt(*eb.clone())
+        } else {
+            Ok(Value::None)
+        }
+    }
+
+    // Not fully implemented
+    fn merge_values(&mut self, v1: Value, v2: Value) -> Result<Value, String> {
+        match (v1, v2) {
+            (Value::Number(n1), Value::Number(n2)) => Ok(Value::Interval(n1.min(n2), n1.max(n2))),
+            (Value::Interval(l1, h1), Value::Interval(l2, h2)) => Ok(Value::Interval(l1.min(l2), h1.max(h2))),
+            (Value::Number(n), Value::Interval(l, h)) | (Value::Interval(l, h), Value::Number(n)) =>
+                Ok(Value::Interval(n.min(l), n.max(h))),
+            (a, b) if a == b => Ok(a),
+            _ => Ok(Value::Unknown),
+        }
     }
 
     fn format_symbolic(&self, expr: &Expr) -> String {

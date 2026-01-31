@@ -34,6 +34,8 @@ impl SKInterpreter {
         let mut parser = Parser::new(tokens);
         let ast = parser.parse()?;
 
+        //self._debug_ast(&ast);
+
         let mut evaluator = Evaluator::new(self.env.clone());
         evaluator.evaluate(ast)
     }

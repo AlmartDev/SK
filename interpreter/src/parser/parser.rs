@@ -75,42 +75,39 @@ impl Parser {
 
     fn if_statement(&mut self) -> Result<Stmt, String> {
         let condition = self.expression()?;
-
-        let mut policy = IfPolicy::Strict;
-        if self.match_token(Token::Arrow) {
-            if self.match_token(Token::Strict) { 
-                policy = IfPolicy::Strict; 
-            } else if self.match_token(Token::Merge) { 
-                policy = IfPolicy::Merge; 
-            } else if self.is_panic_keyword() { // Custom check
-                policy = IfPolicy::Panic; 
-            } else { 
-                return Err(format!("Expect policy after '->', found {:?}", self.peek().token)); 
+        
+        let policy = if self.match_token(Token::Arrow) {
+            match self.advance().token {
+                Token::Strict => IfPolicy::Strict,
+                Token::Merge => IfPolicy::Merge,
+                Token::Panic => IfPolicy::Panic,
+                _ => return Err("Expected policy (strict, merge, panic) after '->'".to_string()),
             }
-        }
+        } else {
+            IfPolicy::Strict // Default to strict policy
+        };
 
         let then_branch = Box::new(self.statement()?);
+        let mut elif_branch = Vec::new();
+
+        while self.match_token(Token::Elif) {
+            let elif_cond = self.expression()?;
+            let elif_body = self.statement()?;
+            elif_branch.push((elif_cond, elif_body));
+        }
 
         let mut else_branch = None;
         if self.match_token(Token::Else) {
             else_branch = Some(Box::new(self.statement()?));
         }
 
-        Ok(Stmt::If { condition, policy, then_branch, else_branch })
-    }
-
-    fn is_panic_keyword(&mut self) -> bool {
-        match &self.peek().token {
-            Token::Panic => {
-                self.advance();
-                true
-            }
-            Token::Identifier(s) if s == "panic" => {
-                self.advance();
-                true
-            }
-            _ => false,
-        }
+        Ok(Stmt::If {
+            condition,
+            policy,
+            then_branch,
+            elif_branch,
+            else_branch,
+        })
     }
 
     fn let_declaration(&mut self) -> Result<Stmt, String> {
