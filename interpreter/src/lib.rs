@@ -6,6 +6,7 @@ use std::cell::RefCell;
 pub mod core;
 pub mod parser;
 pub mod evaluator;
+pub mod libs;
 
 use crate::parser::lexer::{Lexer, Token, TokenSpan};
 use crate::parser::parser::Parser;

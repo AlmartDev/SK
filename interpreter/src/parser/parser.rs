@@ -30,6 +30,10 @@ impl Parser {
 
     fn declaration(&mut self) -> Result<Stmt, Error> {
         match self.peek().token {
+            Token::Import => {
+                self.advance();
+                self.import_declaration()
+            }
             Token::Let => {
                 self.advance();
                 self.let_declaration()
@@ -55,6 +59,21 @@ impl Parser {
                 self.panic_statement()
             }
             _ => self.statement(),
+        }
+    }
+
+    fn import_declaration(&mut self) -> Result<Stmt, Error> {
+        let peeked = self.peek().token.clone();
+        
+        match peeked {
+            Token::Identifier(_) | Token::String(_) => {
+                let path = self.advance().clone();
+                Ok(Stmt::Import { path })
+            }
+            _ => Err(Error {
+                token: self.peek().clone(),
+                message: "Expect library name or file path after 'import'.".to_string(),
+            }),
         }
     }
 

@@ -66,6 +66,52 @@ impl Evaluator {
 
     fn eval_stmt(&mut self, stmt: Stmt) -> Result<Value, Error> {
         match stmt {
+            Stmt::Import { path } => {
+                match &path.token.clone() {
+                    // Case 1: import identifier
+                    Token::Identifier(lib_name) => {
+                        let registry = crate::libs::get_library_registry();
+                        if let Some(register_fn) = registry.get(lib_name) {
+                            let mut env = self.env.borrow_mut();
+                            register_fn(&mut env);
+                        } else {
+                            return Err(Error {
+                                token: path,
+                                message: format!("Unknown native library '{}'", lib_name),
+                            });
+                        }
+                    }
+
+                    // Case 2: import "utils.sk"
+                    Token::String(file_path) => {
+                        let path_buf = std::path::Path::new(file_path);
+                        
+                        let source = std::fs::read_to_string(path_buf)
+                            .or_else(|_| std::fs::read_to_string(format!("examples/{}", file_path)))
+                            .map_err(|e| Error {
+                                token: path.clone(),
+                                message: format!("Could not find file '{}': {}", file_path, e),
+                            })?;
+
+                        let tokens = crate::parser::lexer::Lexer::new(source).tokenize()
+                            .map_err(|msg| Error { token: path.clone(), message: msg })?;
+
+                        let statements = crate::parser::parser::Parser::new(tokens).parse()?;
+
+                        for stmt in statements {
+                            self.eval_stmt(stmt)?;
+                        }
+                    }
+
+                    _ => {
+                        return Err(Error {
+                            token: path,
+                            message: "Import expects a library name or a string path.".to_string(),
+                        });
+                    }
+                }
+                Ok(Value::None)
+            }
             Stmt::Block { statements } => {
                 let new_env = Environment::new_enclosed(self.env.clone());
                 self.execute_block(statements, new_env)

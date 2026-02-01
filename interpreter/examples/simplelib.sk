@@ -1,0 +1,14 @@
+import math
+
+// careful! user defined functions beat any library defined fn
+
+// fn sqrt(n) { 
+//     42
+// }
+
+fn fibonacci(n, previous = 0, current = 1) {
+    if n > 0 {
+        print(current)
+        fibonacci(n - 1, current, previous + current)
+    } 
+}

@@ -1,35 +1,29 @@
 use crate::parser::lexer::TokenSpan;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
-    // left + right, x > y
     Binary {
         left: Box<Expr>,
         operator: TokenSpan,
         right: Box<Expr>,
     },
 
-    // (5 + 5)
     Grouping {
         expression: Box<Expr>,
     },
 
-    // 5.0, "hello", true
     Literal {
         value: TokenSpan,
     },
     
-    // -5, !true
     Unary {
         operator: TokenSpan,
         right: Box<Expr>,
     },
 
-    // x, temperature
     Variable {
         name: TokenSpan,
     },
 
-    // Intervals: [0..1]
     Interval {
         min: Box<Expr>,
         max: Box<Expr>,
@@ -48,27 +42,16 @@ pub enum Expr {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum IfPolicy {
-    Strict,
-    Merge,
-    Panic,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Parameter {
-    pub name: TokenSpan,
-    pub default: Option<Expr>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
-    // let x = 5
+    Import {
+        path: TokenSpan,
+    },
+
     Let {
         name: TokenSpan,
         initializer: Expr,
     },
 
-    // x = 10 (reassignment)
     Assign {
         name: TokenSpan,
         value: Expr,
@@ -80,14 +63,12 @@ pub enum Stmt {
         is_quiet: bool,
     },
 
-    // print(x)
     Print {
         expression: Expr,
     },
 
     Panic,
     
-    // A simple expression like "5 + 5;" appearing as a statement
     Expression {
         expression: Expr,
     },
@@ -109,4 +90,17 @@ pub enum Stmt {
         params: Vec<Parameter>,
         body: Vec<Stmt>
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum IfPolicy {
+    Strict,
+    Merge,
+    Panic,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Parameter {
+    pub name: TokenSpan,
+    pub default: Option<Expr>,
 }

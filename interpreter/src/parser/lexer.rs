@@ -6,6 +6,8 @@ pub enum Token {
     Number(f64),
     String(String),
 
+    Import,
+
     // Keywords
     Let,
     Const,
@@ -282,6 +284,7 @@ impl Lexer {
         }
 
         match text.as_str() {
+            "import" => Token::Import,
             "let" => Token::Let,
             "const" => Token::Const,
             "unknown" => Token::Unknown,
