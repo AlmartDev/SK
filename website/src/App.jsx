@@ -23,17 +23,17 @@ function App() {
     '\n' +
     'print("Hello, World!")\n' +
     '\n' +
-    'fn fibonacci(n, previous, current) { \n' +
-    '    if n > 0 { \n' +
-    '        print(current) \n' +
+    'fn fibonacci(n, previous = 0, current = 1) {\n' +
+    '    if n > 0 {\n' +
+    '        print(current)\n' +
     '        fibonacci(n - 1, current, previous + current)\n' +
     '    }\n' + 
     '}\n' +
     '\n' +
-    'fibonacci(10, 0, 1)\n' +
+    'fibonacci(10)\n' +
     '\n' +
     'let variable = [0..10] // partially known variable\n' +
-    'print("Rate this language from " + str(variable))\n' +
+    'print("Rate this language from " + str(variable) + "!")\n' +
     '\n' +
     '// Find many more examples to try at: \n' +
     '// https://github.com/AlmartDev/SK/tree/main/interpreter/examples\n'
@@ -81,7 +81,7 @@ function App() {
     monaco.languages.setMonarchTokensProvider('sk', {
       tokenizer: {
         root: [
-          [/\b(symbolic|let|unknown|quiet|fn|return|if|elif|else|while|for)\b/, 'keyword'],
+          [/\b(symbolic|let|unknown|quiet|fn|return|if|elif|else|import)\b/, 'keyword'],
           [/\b(certain|possible|impossible|known)\b/, 'builtins'],
           [/\b(intersect|union|mid|width)\b/, 'builtins'],
           [/panic!/, 'builtins'],
