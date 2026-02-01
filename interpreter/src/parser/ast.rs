@@ -1,38 +1,39 @@
-use crate::parser::lexer::Token;
+use crate::parser::lexer::TokenSpan;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     // left + right, x > y
     Binary {
         left: Box<Expr>,
-        operator: Token,
+        operator: TokenSpan,
         right: Box<Expr>,
     },
-    
+
     // (5 + 5)
     Grouping {
         expression: Box<Expr>,
     },
-    
+
     // 5.0, "hello", true
     Literal {
-        value: Token,
+        value: TokenSpan,
     },
     
     // -5, !true
     Unary {
-        operator: Token,
+        operator: TokenSpan,
         right: Box<Expr>,
     },
-    
+
     // x, temperature
     Variable {
-        name: Token,
+        name: TokenSpan,
     },
 
-    // SK Specific: [0..1]
+    // Intervals: [0..1]
     Interval {
         min: Box<Expr>,
         max: Box<Expr>,
+        bracket: TokenSpan, 
     },
 
     Block { 
@@ -41,6 +42,7 @@ pub enum Expr {
 
     Call {
         callee: Box<Expr>,
+        paren: TokenSpan, 
         arguments: Vec<Expr>,
     }
 }
@@ -56,18 +58,18 @@ pub enum IfPolicy {
 pub enum Stmt {
     // let x = 5
     Let {
-        name: Token,
+        name: TokenSpan,
         initializer: Expr,
     },
-    
+
     // x = 10 (reassignment)
     Assign {
-        name: Token,
+        name: TokenSpan,
         value: Expr,
     },
 
     Symbolic {
-        name: Token,
+        name: TokenSpan,
         initializer: Expr,
         is_quiet: bool,
     },
@@ -78,7 +80,7 @@ pub enum Stmt {
     },
 
     Panic,
-
+    
     // A simple expression like "5 + 5;" appearing as a statement
     Expression {
         expression: Expr,

@@ -81,7 +81,7 @@ pub enum Token {
     EOF,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TokenSpan {
     pub token: Token,
     pub line: usize,

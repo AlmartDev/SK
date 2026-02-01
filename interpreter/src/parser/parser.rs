@@ -1,5 +1,6 @@
 use crate::parser::lexer::{Token, TokenSpan};
 use crate::parser::ast::{Expr, IfPolicy, Stmt};
+use crate::core::error::Error;
 
 pub struct Parser {
     tokens: Vec<TokenSpan>,
@@ -14,7 +15,7 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>, String> {
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, Error> {
         let mut statements = Vec::new();
         while !self.is_at_end() {
             if self.match_token(Token::NewLine) {
@@ -25,7 +26,7 @@ impl Parser {
         Ok(statements)
     }
 
-    fn declaration(&mut self) -> Result<Stmt, String> {
+    fn declaration(&mut self) -> Result<Stmt, Error> {
         match self.peek().token {
             Token::Let => {
                 self.advance();
@@ -55,7 +56,7 @@ impl Parser {
         }
     }
 
-    fn symbolic_declaration(&mut self, is_quiet: bool) -> Result<Stmt, String> {
+    fn symbolic_declaration(&mut self, is_quiet: bool) -> Result<Stmt, Error> {
         let name = self.consume_identifier("Expect variable name.")?;
         self.consume(Token::Assign, "Expect '=' after name.")?;
         let initializer = self.expression()?;
@@ -63,17 +64,23 @@ impl Parser {
         Ok(Stmt::Symbolic { name, initializer, is_quiet })
     }
 
-    fn unknown_declaration(&mut self) -> Result<Stmt, String> {
+    fn unknown_declaration(&mut self) -> Result<Stmt, Error> {
         let name = self.consume_identifier("Expect variable name after 'unknown'.")?;
         self.end_stmt()?;
         
+        let unknown_span = TokenSpan { 
+            token: Token::Unknown, 
+            line: name.line, 
+            column: name.column 
+        };
+
         Ok(Stmt::Let { 
             name, 
-            initializer: Expr::Literal { value: Token::Unknown } 
+            initializer: Expr::Literal { value: unknown_span } 
         })
     }
 
-    fn if_statement(&mut self) -> Result<Stmt, String> {
+    fn if_statement(&mut self) -> Result<Stmt, Error> {
         let condition = self.expression()?;
         
         let policy = if self.match_token(Token::Arrow) {
@@ -81,7 +88,10 @@ impl Parser {
                 Token::Strict => IfPolicy::Strict,
                 Token::Merge => IfPolicy::Merge,
                 Token::Panic => IfPolicy::Panic,
-                _ => return Err("Expected policy (strict, merge, panic) after '->'".to_string()),
+                _ => return Err(Error { 
+                    token: self.previous().clone(), 
+                    message: "Expected policy (strict, merge, panic) after '->'".to_string() 
+                }),
             }
         } else {
             IfPolicy::Strict // Default to strict policy
@@ -110,7 +120,7 @@ impl Parser {
         })
     }
 
-    fn let_declaration(&mut self) -> Result<Stmt, String> {
+    fn let_declaration(&mut self) -> Result<Stmt, Error> {
         let name = self.consume_identifier("Expect variable name.")?;
         self.consume(Token::Assign, "Expect '=' after variable name.")?;
         
@@ -120,13 +130,13 @@ impl Parser {
         Ok(Stmt::Let { name, initializer })
     }
 
-    fn statement(&mut self) -> Result<Stmt, String> {
+    fn statement(&mut self) -> Result<Stmt, Error> {
         if self.match_token(Token::LBrace) {
             return Ok(Stmt::Block { statements: self.block()? });
         }
 
         if self.peek_type(Token::Identifier(String::new())) && self.peek_next_type(Token::Assign) {
-            let name = self.advance().token.clone();
+            let name = self.advance().clone(); 
             self.advance(); // consume '='
             let value = self.expression()?;
             self.end_stmt()?;
@@ -137,7 +147,7 @@ impl Parser {
         Ok(Stmt::Expression { expression: expr })
     }
 
-    fn block(&mut self) -> Result<Vec<Stmt>, String> {
+    fn block(&mut self) -> Result<Vec<Stmt>, Error> {
         let mut statements = Vec::new();
 
         while !self.check(&Token::RBrace) && !self.is_at_end() {
@@ -151,15 +161,15 @@ impl Parser {
         Ok(statements)
     }
 
-    pub fn expression(&mut self) -> Result<Expr, String> {
+    pub fn expression(&mut self) -> Result<Expr, Error> {
         self.logic_or()
     }
 
-    fn addition(&mut self) -> Result<Expr, String> {
+    fn addition(&mut self) -> Result<Expr, Error> {
         let mut expr = self.multiplication()?;
 
         while self.match_any(&[Token::Plus, Token::Minus]) {
-            let operator = self.previous().token.clone();
+            let operator = self.previous().clone();
             let right = self.multiplication()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -170,10 +180,10 @@ impl Parser {
         Ok(expr)
     }
 
-    fn logic_or(&mut self) -> Result<Expr, String> {
+    fn logic_or(&mut self) -> Result<Expr, Error> {
         let mut expr = self.logic_and()?;
         while self.match_token(Token::Or) {
-            let operator = self.previous().token.clone();
+            let operator = self.previous().clone();
             let right = self.logic_and()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -184,10 +194,10 @@ impl Parser {
         Ok(expr)
     }
 
-    fn logic_and(&mut self) -> Result<Expr, String> {
+    fn logic_and(&mut self) -> Result<Expr, Error> {
         let mut expr = self.equality()?;
         while self.match_token(Token::And) {
-            let operator = self.previous().token.clone();
+            let operator = self.previous().clone();
             let right = self.equality()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -198,10 +208,10 @@ impl Parser {
         Ok(expr)
     }
 
-    fn equality(&mut self) -> Result<Expr, String> {
+    fn equality(&mut self) -> Result<Expr, Error> {
         let mut expr = self.comparison()?;
         while self.match_any(&[Token::EqualEqual, Token::BangEqual]) {
-            let operator = self.previous().token.clone();
+            let operator = self.previous().clone();
             let right = self.comparison()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -212,10 +222,10 @@ impl Parser {
         Ok(expr)
     }
 
-    fn comparison(&mut self) -> Result<Expr, String> {
+    fn comparison(&mut self) -> Result<Expr, Error> {
         let mut expr = self.addition()?;
         while self.match_any(&[Token::Greater, Token::GreaterEqual, Token::Less, Token::LessEqual]) {
-            let operator = self.previous().token.clone();
+            let operator = self.previous().clone();
             let right = self.addition()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -226,11 +236,11 @@ impl Parser {
         Ok(expr)
     }
 
-    fn multiplication(&mut self) -> Result<Expr, String> {
+    fn multiplication(&mut self) -> Result<Expr, Error> {
         let mut expr = self.power()?;
 
         while self.match_tokens(&[Token::Star, Token::Slash]) {
-            let operator = self.previous().token.clone();
+            let operator = self.previous().clone();
             let right = self.power()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -242,11 +252,11 @@ impl Parser {
         Ok(expr)
     }
 
-    fn power(&mut self) -> Result<Expr, String> {
+    fn power(&mut self) -> Result<Expr, Error> {
         let mut expr = self.unary()?;
 
         while self.match_token(Token::Caret) {
-            let operator = self.previous().token.clone();
+            let operator = self.previous().clone();
             let right = self.unary()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -258,16 +268,16 @@ impl Parser {
         Ok(expr)
     }
 
-    fn unary(&mut self) -> Result<Expr, String> {
+    fn unary(&mut self) -> Result<Expr, Error> {
         if self.match_any(&[Token::Bang, Token::Minus]) {
-            let operator = self.previous().token.clone();
+            let operator = self.previous().clone();
             let right = self.unary()?;
             return Ok(Expr::Unary { operator, right: Box::new(right) });
         }
         self.call()
     }
 
-    fn call(&mut self) -> Result<Expr, String> {
+    fn call(&mut self) -> Result<Expr, Error> {
         let mut expr = self.primary()?;
 
         loop {
@@ -280,7 +290,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn finish_call(&mut self, callee: Expr) -> Result<Expr, String> {
+    fn finish_call(&mut self, callee: Expr) -> Result<Expr, Error> {
         let mut arguments = Vec::new();
         if !self.check(&Token::RParen) {
             loop {
@@ -288,20 +298,21 @@ impl Parser {
                 if !self.match_token(Token::Comma) { break; }
             }
         }
-        self.consume(Token::RParen, "Expect ')' after arguments.")?;
+        let paren = self.consume(Token::RParen, "Expect ')' after arguments.")?.clone();
 
         Ok(Expr::Call {
             callee: Box::new(callee),
+            paren,
             arguments,
         })
     }
 
-    fn primary(&mut self) -> Result<Expr, String> {
-        if self.match_token(Token::True) { return Ok(Expr::Literal { value: Token::True }); }
-        if self.match_token(Token::False) { return Ok(Expr::Literal { value: Token::False }); }
-        if self.match_token(Token::Partial) { return Ok(Expr::Literal { value: Token::Partial }); }
-        if self.match_token(Token::None) { return Ok(Expr::Literal { value: Token::None }); }
-        if self.match_token(Token::Unknown) { return Ok(Expr::Literal { value: Token::Unknown }); }
+    fn primary(&mut self) -> Result<Expr, Error> {
+        if self.match_token(Token::True) { return Ok(Expr::Literal { value: self.previous().clone() }); }
+        if self.match_token(Token::False) { return Ok(Expr::Literal { value: self.previous().clone() }); }
+        if self.match_token(Token::Partial) { return Ok(Expr::Literal { value: self.previous().clone() }); }
+        if self.match_token(Token::None) { return Ok(Expr::Literal { value: self.previous().clone() }); }
+        if self.match_token(Token::Unknown) { return Ok(Expr::Literal { value: self.previous().clone() }); }
 
         if self.match_token(Token::LBrace) {
             let statements = self.block()?;
@@ -309,7 +320,7 @@ impl Parser {
         }
 
         if self.match_any(&[Token::Number(0.0), Token::String("".to_string())]) {
-            return Ok(Expr::Literal { value: self.previous().token.clone() });
+            return Ok(Expr::Literal { value: self.previous().clone() });
         }
 
         if self.match_token(Token::Identifier("".to_string())) 
@@ -326,7 +337,7 @@ impl Parser {
             || self.match_token(Token::Union)
             || self.match_token(Token::String("".to_string())) {
 
-            return Ok(Expr::Variable { name: self.previous().token.clone() });
+            return Ok(Expr::Variable { name: self.previous().clone() });
         }
 
         if self.match_token(Token::LParen) {
@@ -339,17 +350,23 @@ impl Parser {
             let min = self.expression()?;
             self.consume(Token::RangeSep, "Expect '..' in interval.")?;
             let max = self.expression()?;
-            self.consume(Token::RBracket, "Expect ']' after interval.")?;
-            return Ok(Expr::Interval { min: Box::new(min), max: Box::new(max) });
+            let bracket = self.consume(Token::RBracket, "Expect ']' after interval.")?.clone();
+            return Ok(Expr::Interval { min: Box::new(min), max: Box::new(max), bracket });
         }
 
-        Err(format!("Expect expression, found {:?} at line {}", self.peek().token, self.peek().line))
+        Err(Error { 
+            token: self.peek().clone(), 
+            message: "Expect expression".to_string() 
+        })
     }
 
-    fn end_stmt(&mut self) -> Result<(), String> {
+    fn end_stmt(&mut self) -> Result<(), Error> {
         if self.is_at_end() { return Ok(()); }
         if self.match_token(Token::NewLine) { return Ok(()); }
-        Err(format!("Expect newline or EOF after statement, found {:?}", self.peek().token))
+        Err(Error { 
+            token: self.peek().clone(), 
+            message: "Expect newline or EOF after statement".to_string() 
+        })
     }
 
     fn match_token(&mut self, t: Token) -> bool {
@@ -402,12 +419,15 @@ impl Parser {
         &self.tokens[self.current - 1]
     }
 
-    fn consume(&mut self, t: Token, msg: &str) -> Result<&TokenSpan, String> {
+    fn consume(&mut self, t: Token, msg: &str) -> Result<&TokenSpan, Error> {
         if self.check(&t) { return Ok(self.advance()); }
-        Err(format!("{} found {:?} at line {}", msg, self.peek().token, self.peek().line))
+        Err(Error { 
+            token: self.peek().clone(), 
+            message: msg.to_string() 
+        })
     }
 
-    fn panic_statement(&mut self) -> Result<Stmt, String> {
+    fn panic_statement(&mut self) -> Result<Stmt, Error> {
         self.end_stmt()?;
         Ok(Stmt::Panic)
     }
@@ -422,14 +442,17 @@ impl Parser {
         std::mem::discriminant(&self.tokens[self.current + 1].token) == std::mem::discriminant(&t)
     }
 
-    fn consume_identifier(&mut self, msg: &str) -> Result<Token, String> {
-        let t = self.peek().token.clone();
-        match t {
+    fn consume_identifier(&mut self, msg: &str) -> Result<TokenSpan, Error> {
+        let t = self.peek().clone();
+        match t.token {
             Token::Identifier(_) => {
                 self.advance();
                 Ok(t)
             },
-            _ => Err(format!("{} found {:?} at line {}", msg, t, self.peek().line)),
+            _ => Err(Error { 
+                token: t, 
+                message: msg.to_string() 
+            }),
         }
     }
 }

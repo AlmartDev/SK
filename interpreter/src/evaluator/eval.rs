@@ -1,7 +1,8 @@
 use crate::parser::ast::{Expr, IfPolicy, Stmt};
-use crate::parser::lexer::Token;
+use crate::parser::lexer::{Token, TokenSpan};
 use crate::core::value::{Value, SKBool};
 use crate::core::logic;
+use crate::core::error::Error;
 use crate::evaluator::env::Environment;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -15,7 +16,7 @@ impl Evaluator {
         Self { env }
     }
 
-    pub fn evaluate(&mut self, statements: Vec<Stmt>) -> Result<Value, String> {
+    pub fn evaluate(&mut self, statements: Vec<Stmt>) -> Result<Value, Error> {
         let mut last_value = Value::None;
         for stmt in statements {
             last_value = self.eval_stmt(stmt)?;
@@ -23,11 +24,11 @@ impl Evaluator {
         Ok(last_value)
     }
 
-    pub fn evaluate_expression(&mut self, expr: Expr) -> Result<Value, String> {
+    pub fn evaluate_expression(&mut self, expr: Expr) -> Result<Value, Error> {
         self.eval_expr(expr)
     }
 
-    fn execute_block(&mut self, statements: Vec<Stmt>, env: Environment) -> Result<Value, String> {
+    fn execute_block(&mut self, statements: Vec<Stmt>, env: Environment) -> Result<Value, Error> {
         let previous = self.env.clone();
         self.env = Rc::new(RefCell::new(env));
 
@@ -41,11 +42,19 @@ impl Evaluator {
             match stmt {
                 // Only a bare expression on the last line can a value.
                 Stmt::Expression { expression } if is_last => {
-                    last_value = self.eval_expr(expression)?;
+                    match self.eval_expr(expression) {
+                        Ok(val) => last_value = val,
+                        Err(e) => {
+                            self.env = previous;
+                            return Err(e);
+                        }
+                    }
                 }
-                // Or return none
                 _ => {
-                    self.eval_stmt(stmt)?;
+                    if let Err(e) = self.eval_stmt(stmt) {
+                        self.env = previous;
+                        return Err(e);
+                    }
                     last_value = Value::None;
                 }
             }
@@ -55,7 +64,7 @@ impl Evaluator {
         Ok(last_value)
     }
 
-    fn eval_stmt(&mut self, stmt: Stmt) -> Result<Value, String> {
+    fn eval_stmt(&mut self, stmt: Stmt) -> Result<Value, Error> {
         match stmt {
             Stmt::Block { statements } => {
                 let new_env = Environment::new_enclosed(self.env.clone());
@@ -63,30 +72,32 @@ impl Evaluator {
             }
             Stmt::Let { name, initializer } => {
                 let val = self.eval_expr(initializer)?;
-                if let Token::Identifier(n) = name {
-                    self.env.borrow_mut().define(n, val);
+                if let Token::Identifier(n) = &name.token {
+                    self.env.borrow_mut().define(n.clone(), val);
                 }
                 Ok(Value::None)
             }
             Stmt::Symbolic { name, initializer, is_quiet } => {
-                if let Token::Identifier(n) = name {
-                    self.env.borrow_mut().define(n, Value::Symbolic { 
-                        expression: Box::new(initializer), 
-                        is_quiet 
+                if let Token::Identifier(n) = &name.token {
+                    self.env.borrow_mut().define(n.clone(), Value::Symbolic {
+                        expression: Box::new(initializer),
+                        is_quiet,
                     });
                 }
                 Ok(Value::None)
             }
             Stmt::Assign { name, value } => {
                 let val = self.eval_expr(value)?;
-                if let Token::Identifier(n) = name {
-                    self.env.borrow_mut().assign(&n, val)?;
+                if let Token::Identifier(n) = &name.token {
+                    if let Err(msg) = self.env.borrow_mut().assign(n, val) {
+                        return Err(Error { token: name, message: msg });
+                    }
                 }
                 Ok(Value::None)
             }
             Stmt::Print { expression } => {
                 let val = self.eval_expr(expression)?;
-                self.print_value(val)?;
+                self.print_value(val);
                 Ok(Value::None)
             }
             Stmt::Panic => {
@@ -100,19 +111,21 @@ impl Evaluator {
         }
     }
 
-    fn print_value(&mut self, val: Value) -> Result<(), String> {
+    fn print_value(&mut self, val: Value) {
         match val {
             Value::Symbolic { ref expression, is_quiet } => {
                 if is_quiet {
-                    let resolved = self.eval_expr(*expression.clone())?;
-                    println!("{}", resolved);
+                    if let Ok(resolved) = self.evaluate_expression(*expression.clone()) {
+                        println!("{}", resolved);
+                    } else {
+                        println!("Error resolving quiet symbolic");
+                    }
                 } else {
                     println!("{}", self.format_symbolic(expression));
                 }
             }
             _ => println!("{}", val),
         }
-        Ok(())
     }
 
     fn eval_if_chain(
@@ -121,21 +134,24 @@ impl Evaluator {
         body: Stmt,
         remaining_elifs: &[(Expr, Stmt)],
         else_branch: &Option<Box<Stmt>>,
-        policy: IfPolicy
-    ) -> Result<Value, String> {
+        policy: IfPolicy,
+    ) -> Result<Value, Error> {
         let cond_val = self.eval_expr(cond_expr)?;
         let sk_bool = match cond_val {
             Value::Bool(b) => b,
-            _ => return Err("Condition must be a boolean".to_string()),
+            _ => {
+                return Err(Error {
+                    token: TokenSpan { token: Token::Unknown, line: 0, column: 0 },
+                    message: "Condition must be a boolean".to_string(),
+                });
+            }
         };
 
         match sk_bool {
             SKBool::True => self.eval_stmt(body),
             SKBool::False => self.eval_next_in_chain(remaining_elifs, else_branch, policy),
             SKBool::Partial => match policy {
-                IfPolicy::Strict => {
-                    self.eval_next_in_chain(remaining_elifs, &None, policy)
-                }
+                IfPolicy::Strict => self.eval_next_in_chain(remaining_elifs, &None, policy),
                 IfPolicy::Panic => {
                     eprintln!("Program panicked! Uncertain condition with panic policy.");
                     std::process::exit(1);
@@ -153,8 +169,8 @@ impl Evaluator {
         &mut self,
         elifs: &[(Expr, Stmt)],
         else_branch: &Option<Box<Stmt>>,
-        policy: IfPolicy
-    ) -> Result<Value, String> {
+        policy: IfPolicy,
+    ) -> Result<Value, Error> {
         if let Some(((next_cond, next_body), rest)) = elifs.split_first() {
             self.eval_if_chain(next_cond.clone(), next_body.clone(), rest, else_branch, policy)
         } else if let Some(eb) = else_branch {
@@ -165,12 +181,13 @@ impl Evaluator {
     }
 
     // Not fully implemented
-    fn merge_values(&mut self, v1: Value, v2: Value) -> Result<Value, String> {
+    fn merge_values(&mut self, v1: Value, v2: Value) -> Result<Value, Error> {
         match (v1, v2) {
             (Value::Number(n1), Value::Number(n2)) => Ok(Value::Interval(n1.min(n2), n1.max(n2))),
             (Value::Interval(l1, h1), Value::Interval(l2, h2)) => Ok(Value::Interval(l1.min(l2), h1.max(h2))),
-            (Value::Number(n), Value::Interval(l, h)) | (Value::Interval(l, h), Value::Number(n)) =>
-                Ok(Value::Interval(n.min(l), n.max(h))),
+            (Value::Number(n), Value::Interval(l, h)) | (Value::Interval(l, h), Value::Number(n)) => {
+                Ok(Value::Interval(n.min(l), n.max(h)))
+            }
             (a, b) if a == b => Ok(a),
             _ => Ok(Value::Unknown),
         }
@@ -181,7 +198,7 @@ impl Evaluator {
             Expr::Binary { left, operator, right } => {
                 let l = self.format_symbolic(left);
                 let r = self.format_symbolic(right);
-                let op = match operator {
+                let op = match operator.token {
                     Token::Plus => "+",
                     Token::Minus => "-",
                     Token::Star => "*",
@@ -199,20 +216,20 @@ impl Evaluator {
                 };
                 format!("({} {} {})", l, op, r)
             }
-            Expr::Literal { value } => match value {
+            Expr::Literal { value } => match &value.token {
                 Token::Number(n) => format!("{}", n),
                 Token::Unknown => "unknown".to_string(),
                 Token::String(s) => s.clone(),
                 Token::True => "true".to_string(),
                 Token::False => "false".to_string(),
                 Token::Partial => "partial".to_string(),
-                _ => format!("{:?}", value),
+                _ => format!("{:?}", value.token),
             },
             Expr::Variable { name } => {
-                if let Token::Identifier(n) = name {
+                if let Token::Identifier(n) = &name.token {
                     n.clone()
                 } else {
-                    format!("{:?}", name)
+                    format!("{:?}", name.token)
                 }
             }
             Expr::Grouping { expression } => format!("({})", self.format_symbolic(expression)),
@@ -234,14 +251,14 @@ impl Evaluator {
         }
     }
 
-    fn eval_expr(&mut self, expr: Expr) -> Result<Value, String> {
+    fn eval_expr(&mut self, expr: Expr) -> Result<Value, Error> {
         match expr {
             Expr::Block { statements } => {
                 let new_env = Environment::new_enclosed(self.env.clone());
                 self.execute_block(statements, new_env)
             }
 
-            Expr::Literal { value } => match value {
+            Expr::Literal { value } => match value.token {
                 Token::Number(n) => Ok(Value::Number(n)),
                 Token::String(s) => Ok(Value::String(s)),
                 Token::True => Ok(Value::Bool(SKBool::True)),
@@ -249,40 +266,58 @@ impl Evaluator {
                 Token::Partial => Ok(Value::Bool(SKBool::Partial)),
                 Token::Unknown => Ok(Value::Unknown),
                 Token::None => Ok(Value::None),
-                _ => Err(format!("Unsupported literal: {:?}", value)),
-            }
+                _ => Err(Error {
+                    token: value,
+                    message: "Unsupported literal".to_string(),
+                }),
+            },
 
             Expr::Variable { name } => {
-                let name_str = match name {
+                let name_str = match &name.token {
                     Token::Identifier(n) => n,
-                    Token::Print => "print".to_string(),
-                    Token::Input => "input".to_string(),
-                    Token::Kind => "kind".to_string(),
-                    Token::Certain => "certain".to_string(),
-                    Token::Known => "known".to_string(),
-                    Token::Possible => "possible".to_string(),
-                    Token::Impossible => "impossible".to_string(),
-                    Token::Str => "str".to_string(),
-                    Token::Num => "num".to_string(),
-                    Token::Width => "width".to_string(),
-                    Token::Mid => "mid".to_string(),
-                    Token::Intersect => "intersect".to_string(),
-                    Token::Union => "union".to_string(),
-                    _ => return Err("Expected identifier".to_string()),
+                    Token::Print => "print",
+                    Token::Input => "input",
+                    Token::Kind => "kind",
+                    Token::Certain => "certain",
+                    Token::Known => "known",
+                    Token::Possible => "possible",
+                    Token::Impossible => "impossible",
+                    Token::Str => "str",
+                    Token::Num => "num",
+                    Token::Width => "width",
+                    Token::Mid => "mid",
+                    Token::Intersect => "intersect",
+                    Token::Union => "union",
+                    _ => {
+                        return Err(Error {
+                            token: name,
+                            message: "Expected identifier".to_string(),
+                        })
+                    }
                 };
-                self.env.borrow().get(&name_str)
+                self.env.borrow().get(name_str).map_err(|msg| Error {
+                    token: name,
+                    message: msg,
+                })
             }
 
-            Expr::Interval { min, max } => {
+            Expr::Interval { min, max, bracket } => {
                 let low = self.eval_expr(*min)?;
                 let high = self.eval_expr(*max)?;
                 match (low, high) {
                     (Value::Number(l), Value::Number(h)) => Ok(Value::Interval(l, h)),
-                    _ => Err("Interval bounds must be numbers".to_string()),
+                    _ => Err(Error {
+                        token: bracket,
+                        message: "Interval bounds must be numbers".to_string(),
+                    }),
                 }
             }
 
-            Expr::Binary { left, operator, right } => {
+            Expr::Binary {
+                left,
+                operator,
+                right,
+            } => {
                 let l_val = self.eval_expr(*left)?;
                 let r_val = self.eval_expr(*right)?;
                 self.apply_binary(l_val, operator, r_val)
@@ -290,70 +325,114 @@ impl Evaluator {
 
             Expr::Unary { operator, right } => {
                 let val = self.eval_expr(*right)?;
-                match (operator, val) {
+                match (operator.token.clone(), val) {
                     (Token::Minus, Value::Number(n)) => Ok(Value::Number(-n)),
                     (Token::Bang, Value::Bool(b)) => Ok(Value::Bool(logic::not(b))),
-                    _ => Err("Invalid unary operation".to_string()),
+                    _ => Err(Error {
+                        token: operator,
+                        message: "Invalid unary operation".to_string(),
+                    }),
                 }
             }
 
             Expr::Grouping { expression } => self.eval_expr(*expression),
-            Expr::Call { callee, arguments } => {
+            Expr::Call {
+                callee,
+                arguments,
+                paren,
+            } => {
                 let callee_val = self.eval_expr(*callee)?;
                 let mut args = Vec::new();
                 for arg in arguments {
                     args.push(self.eval_expr(arg)?);
                 }
                 match callee_val {
-                    Value::NativeFn(func) => func(args, self),
-                    _ => Err(format!("Value '{}' is not callable", callee_val)),
+                    Value::NativeFn(func) => {
+                        match func(args, self) {
+                            Ok(v) => Ok(v),
+                            Err(mut e) => {
+                                // If the error came from a builtin without location info,
+                                // attach the function call location.
+                                if matches!(e.token.token, Token::Unknown) {
+                                    e.token = paren;
+                                }
+                                Err(e)
+                            }
+                        }
+                    },
+                    _ => Err(Error {
+                        token: paren,
+                        message: format!("Value '{}' is not callable", callee_val),
+                    }),
                 }
             }
         }
     }
 
-    fn apply_binary(&mut self, left: Value, op: Token, right: Value) -> Result<Value, String> {
+    fn apply_binary(&mut self, left: Value, op: TokenSpan, right: Value) -> Result<Value, Error> {
         if left == Value::Unknown || right == Value::Unknown {
             return Ok(Value::Unknown);
         }
 
         let is_symbolic = left.is_symbolic_or_unknown() || right.is_symbolic_or_unknown();
+        let operator = op.token.clone();
 
-        let res = match op {
-            Token::Plus => left.add(&right),
-            Token::Minus => left.sub(&right),
-            Token::Star => left.mul(&right),
-            Token::Slash => left.div(&right),
-            Token::Caret => left.pow(&right),
-            
-            Token::EqualEqual | Token::BangEqual | 
-            Token::Greater | Token::GreaterEqual | 
-            Token::Less | Token::LessEqual => left.compare(&right, &op),
-            
-            Token::And | Token::Or => left.logic(&right, &op),
-            
-            _ => Err(format!("Unknown binary operator {:?}", op)),
+        let res: Result<Value, String> = match operator {
+            Token::Plus => left.add(&right).map_err(|e| e.message),
+            Token::Minus => left.sub(&right).map_err(|e| e.message),
+            Token::Star => left.mul(&right).map_err(|e| e.message),
+            Token::Slash => left.div(&right).map_err(|e| e.message),
+            Token::Caret => left.pow(&right).map_err(|e| e.message),
+
+            Token::EqualEqual
+            | Token::BangEqual
+            | Token::Greater
+            | Token::GreaterEqual
+            | Token::Less
+            | Token::LessEqual => left.compare(&right, &operator).map_err(|e| e.message),
+
+            Token::And | Token::Or => left.logic(&right, &operator).map_err(|e| e.message),
+
+            _ => Err(format!("Unknown binary operator {:?}", operator)),
         };
 
         match res {
             Ok(val) => Ok(val),
             Err(_) if is_symbolic => self.propagate_symbolic(left, op, right),
-            Err(e) => Err(e),
+            Err(msg) => Err(Error {
+                token: op,
+                message: msg,
+            }),
         }
     }
 
-    fn propagate_symbolic(&self, left: Value, op: Token, right: Value) -> Result<Value, String> {
+    fn propagate_symbolic(
+        &self,
+        left: Value,
+        op: TokenSpan,
+        right: Value,
+    ) -> Result<Value, Error> {
         let is_quiet = match (&left, &right) {
             (Value::Symbolic { is_quiet: q, .. }, _) => *q,
             (_, Value::Symbolic { is_quiet: q, .. }) => *q,
             _ => false,
         };
-        
+
+        let dummy_span = |t: Token| TokenSpan {
+            token: t,
+            line: 0,
+            column: 0,
+        };
+
         Ok(Value::Symbolic {
             expression: Box::new(Expr::Binary {
-                left: Box::new(Expr::Literal { value: self.value_to_token(left) }),
+                left: Box::new(Expr::Literal {
+                    value: dummy_span(self.value_to_token(left)),
+                }),
                 operator: op,
-                right: Box::new(Expr::Literal { value: self.value_to_token(right) }),
+                right: Box::new(Expr::Literal {
+                    value: dummy_span(self.value_to_token(right)),
+                }),
             }),
             is_quiet,
         })

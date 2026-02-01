@@ -20,7 +20,7 @@ fn run(path: &Path) {
             }
         }
         Err(e) => {
-            log::error!("Runtime Error: {}", e);
+            log::error!("{}", e);
             process::exit(1)
         }
     }

@@ -7,12 +7,13 @@ pub mod core;
 pub mod parser;
 pub mod evaluator;
 
-use crate::parser::lexer::Lexer;
+use crate::parser::lexer::{Lexer, Token, TokenSpan};
 use crate::parser::parser::Parser;
 use crate::evaluator::eval::Evaluator;
 use crate::evaluator::env::Environment;
 use crate::core::value::Value;
 use crate::parser::ast::Stmt;
+use crate::core::error::Error;
 
 pub struct SKInterpreter {
     env: Rc<RefCell<Environment>>,
@@ -25,27 +26,39 @@ impl SKInterpreter {
         }
     }
 
-    pub fn execute(&mut self, source: &Path) -> Result<Value, String> {
-        let raw = fs::read_to_string(source).map_err(|e| e.to_string())?;
+    pub fn execute(&mut self, source: &Path) -> Result<Value, Error> {
+        let raw = fs::read_to_string(source).map_err(|e| Error {
+            token: TokenSpan {
+                token: Token::Unknown,
+                line: 0,
+                column: 0,
+            },
+            message: format!("{}", e),
+        })?;
 
-        let mut lexer = Lexer::new(raw);
-        let tokens = lexer.tokenize()?;
-
-        let mut parser = Parser::new(tokens);
-        let ast = parser.parse()?;
-
-        //self._debug_ast(&ast);
-
-        let mut evaluator = Evaluator::new(self.env.clone());
-        evaluator.evaluate(ast)
+        self.execute_string(raw)
     }
 
-    pub fn execute_string(&mut self, source: String) -> Result<Value, String> {
+    pub fn execute_string(&mut self, source: String) -> Result<Value, Error> {
         let mut lexer = Lexer::new(source);
-        let tokens = lexer.tokenize()?;
+        let tokens = lexer.tokenize().map_err(|msg| Error {
+            token: TokenSpan {
+                token: Token::Unknown,
+                line: 0,
+                column: 0,
+            },
+            message: msg,
+        })?;
 
         let mut parser = Parser::new(tokens);
-        let ast = parser.parse()?;
+        let ast = parser.parse().map_err(|msg| Error {
+            token: TokenSpan {
+                token: Token::Unknown,
+                line: 0,
+                column: 0,
+            },
+            message: msg.to_string(),
+        })?;
 
         let mut evaluator = Evaluator::new(self.env.clone());
         evaluator.evaluate(ast)
