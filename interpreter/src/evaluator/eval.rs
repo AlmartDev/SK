@@ -362,20 +362,31 @@ impl Evaluator {
                         }
                     },
                     Value::Function(func) => {
-                        if eval_args.len() != func.params.len() {
+                        let mut call_env = Environment::new_enclosed(func.closure.clone());
+
+                        for (i, param) in func.params.iter().enumerate() {
+                            let value = if i < eval_args.len() {
+                                eval_args[i].clone()
+                            } else if let Some(default_expr) = &param.default {
+                                self.eval_expr(default_expr.clone())?
+                            } else {
+                                return Err(Error {
+                                    token: paren.clone(),
+                                    message: format!("Missing required argument '{}'", param.name.token_to_string()),
+                                });
+                            };
+
+                            call_env.define(param.name.token_to_string(), value);
+                        }
+
+                        if eval_args.len() > func.params.len() {
                             return Err(Error {
                                 token: paren,
-                                message: format!("Expected {} args, got {}", func.params.len(), eval_args.len()),
+                                message: format!("Expected at most {} args, got {}", func.params.len(), eval_args.len()),
                             });
                         }
 
-                        let mut call_env = Environment::new_enclosed(func.closure.clone());
-
-                        for (param_token, arg_value) in func.params.iter().zip(eval_args) {
-                            call_env.define(param_token.token_to_string(), arg_value);
-                        }
-                        
-                        self.execute_block(func.body, call_env)
+                        self.execute_block(func.body.clone(), call_env)
                     }
                     _ => Err(Error {
                         token: paren,

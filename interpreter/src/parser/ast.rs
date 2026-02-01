@@ -55,6 +55,12 @@ pub enum IfPolicy {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct Parameter {
+    pub name: TokenSpan,
+    pub default: Option<Expr>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
     // let x = 5
     Let {
@@ -100,7 +106,7 @@ pub enum Stmt {
 
     Function {
         name: TokenSpan,
-        params: Vec<TokenSpan>,
+        params: Vec<Parameter>,
         body: Vec<Stmt>
     }
 }

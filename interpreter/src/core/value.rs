@@ -1,5 +1,5 @@
 use core::fmt;
-use crate::parser::ast::{Expr, Stmt};
+use crate::parser::ast::{Expr, Parameter, Stmt};
 use crate::parser::lexer::{Token, TokenSpan};
 use crate::core::logic;
 use crate::core::error::Error;
@@ -19,7 +19,7 @@ pub type NativeFn = fn(Vec<Value>, &mut crate::evaluator::eval::Evaluator) -> Re
 
 #[derive(Debug, Clone)]
 pub struct Function {
-    pub params: Vec<TokenSpan>,
+    pub params: Vec<Parameter>,
     pub body: Vec<Stmt>,
     pub closure: Rc<RefCell<Environment>>, 
 }

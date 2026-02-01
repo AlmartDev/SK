@@ -1,5 +1,5 @@
 use crate::parser::lexer::{Token, TokenSpan};
-use crate::parser::ast::{Expr, IfPolicy, Stmt};
+use crate::parser::ast::{Expr, IfPolicy, Parameter, Stmt};
 use crate::core::error::Error;
 
 pub struct Parser {
@@ -66,7 +66,14 @@ impl Parser {
         let mut parameters = Vec::new();
         if !self.check(&Token::RParen) {
             loop {
-                parameters.push(self.consume_identifier("Expect parameter name.")?);
+                let param_name = self.consume_identifier("Expect parameter name.")?;
+                let mut default = None;
+
+                if self.match_token(Token::Assign) {
+                    default = Some(self.expression()?);
+                }
+
+                parameters.push(Parameter { name: param_name, default });
                 if !self.match_token(Token::Comma) { break; }
             }
         }
