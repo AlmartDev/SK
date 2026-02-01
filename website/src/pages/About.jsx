@@ -48,7 +48,7 @@ const About = ({ theme, setPage }) => {
           className="group flex items-center gap-2 px-6 py-2.5 bg-[#93c5fd] text-[#1e3a8a] rounded-lg font-bold text-xl hover:opacity-90 transition-all duration-300"
         >
           <HelpCircle size={24} />
-          <span>More Examples</span>
+          <span>The Basics!</span>
           <ExternalLink size={20} className="opacity-0 w-0 -translate-x-2 group-hover:opacity-100 group-hover:w-5 group-hover:translate-x-0 transition-all duration-300" />
         </button>
         <button 

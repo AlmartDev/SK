@@ -23,11 +23,19 @@ function App() {
     '\n' +
     'print("Hello, World!")\n' +
     '\n' +
-    'let variable = [0..10]\n' +
-    'print("Rate this language from " + str(variable) + "!")\n' +
+    'fn fibonacci(n, previous, current) { \n' +
+    '    if n > 0 { \n' +
+    '        print(current) \n' +
+    '        fibonacci(n - 1, current, previous + current)\n' +
+    '    }\n' + 
+    '}\n' +
     '\n' +
+    'fibonacci(10, 0, 1)\n' +
     '\n' +
-    '// Find many examples to test at: \n' +
+    'let variable = [0..10] // partially known variable\n' +
+    'print("Rate this language from " + str(variable))\n' +
+    '\n' +
+    '// Find many more examples to try at: \n' +
     '// https://github.com/AlmartDev/SK/tree/main/interpreter/examples\n'
   );
   const [output, setOutput] = useState('Run the code to see the output');
