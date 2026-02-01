@@ -180,7 +180,7 @@ function App() {
   return (
     <div className={`h-screen flex flex-col ${t.bg} font-sans p-10 select-none`}>
       <input type="file" ref={fileInputRef} onChange={handleUpload} className="hidden" accept=".sk" />
-      <Header currentPage={page} onRun={handleRun} onDownload={handleDownload} onUpload={() => fileInputRef.current?.click()} setPage={setPage} theme={t} />
+      <Header currentPage={page} onRun={handleRun} onDownload={handleDownload} onUpload={handleUpload} setPage={setPage} theme={t} />
       {PAGES[page]}
     </div>
   );
