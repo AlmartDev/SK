@@ -7,7 +7,7 @@ if len(sys.argv) > 1:
     else:
         examples = [f"test-{sys.argv[1]}"]
 else:
-    examples = ["test-symbolics"]
+    examples = ["test-values"]
 
 # ===========
 clearOnStart = True
