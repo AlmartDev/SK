@@ -33,10 +33,10 @@ const About = ({ theme, setPage }) => {
 
       <div className="bg-[#0a0a0f]/50 border border-white/5 rounded-xl p-8 max-w-3xl mb-8 backdrop-blur-sm">
         <p className="text-m text-slate-300 font-medium text-center leading-relaxed">
-          SK is a uncertanty based interpreted programming language.<br />
-          It's designed to handle unknown or partialy know varialbes like any other.<br />
-          Includes a rust-inspired syntax and a fast rust interpreter<br />
-          that handles a basic version of the language.<br /><br />
+          SK is an uncertainty-based, interpreted programming language designed <br/>
+          to handle unknown or partially known variables as first-class citizens. <br/>
+          It features a Rust-inspired syntax and a high-performance interpreter, <br/>
+          written in Rust, that supports the core specifications of the language. <br/><br/>
 
           Developed by <a href='https://github.com/AlmartDev/'>@AlmartDev</a> with &lt;3
         </p>
