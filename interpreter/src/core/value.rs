@@ -130,7 +130,6 @@ impl Value {
     pub fn mul(&self, other: &Value) -> Result<Value, Error> {
         match (self, other) {
             (Value::Number(n), _) | (_, Value::Number(n)) if *n == 0.0 => Ok(Value::Number(0.0)),
-
             (Value::Number(a), Value::Number(b)) => Ok(Value::Number(a * b)),
 
             (Value::Interval(min, max), Value::Number(n)) | (Value::Number(n), Value::Interval(min, max)) => {
@@ -152,6 +151,10 @@ impl Value {
     }
 
     pub fn div(&self, other: &Value) -> Result<Value, Error> {
+        if let (Value::Unknown, _) | (_, Value::Unknown) = (self, other) {
+            return Ok(Value::Unknown);
+        }
+
         if self == other {
             match self {
                 Value::Number(n) if *n != 0.0 => return Ok(Value::Number(1.0)),
@@ -162,10 +165,48 @@ impl Value {
 
         match (self, other) {
             (Value::Number(a), Value::Number(b)) => {
-                if *b == 0.0 { return Err(Self::err("Division by zero".to_string())); }
+                if *b == 0.0 { return Err(Self::err("Division by zero!".to_string())); }
                 Ok(Value::Number(a / b))
-            },
-            _ => Err(Self::err("Division only supported for numbers".to_string())),
+            }
+            (Value::Interval(a_min, a_max), Value::Number(b)) => {
+                if *b == 0.0 { return Err(Self::err("Division by zero!".to_string())); }
+                let vals = [a_min / b, a_max / b];
+                Ok(Value::Interval(
+                    vals.iter().copied().fold(f64::INFINITY, f64::min),
+                    vals.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+                ))
+            }
+            (Value::Number(a), Value::Interval(b_min, b_max)) => {
+                if *b_min <= 0.0 && *b_max >= 0.0 {
+                    return Err(Self::err("Division by interval containing zero".to_string()));
+                }
+                let vals = [a / b_min, a / b_max];
+                Ok(Value::Interval(
+                    vals.iter().copied().fold(f64::INFINITY, f64::min),
+                    vals.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+                ))
+            }
+            (Value::Interval(a_min, a_max), Value::Interval(b_min, b_max)) => {
+                if *b_min <= 0.0 && *b_max >= 0.0 {
+                    return Err(Self::err("Division by interval containing zero".to_string()));
+                }
+
+                let b_recip_min = 1.0 / b_max;
+                let b_recip_max = 1.0 / b_min;
+
+                let ips = [
+                    a_min * b_recip_min,
+                    a_min * b_recip_max,
+                    a_max * b_recip_min,
+                    a_max * b_recip_max,
+                ];
+
+                Ok(Value::Interval(
+                    ips.iter().copied().fold(f64::INFINITY, f64::min),
+                    ips.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+                ))
+            }
+            _ => Err(Self::err("Division not supported for these types".to_string())),
         }
     }
 

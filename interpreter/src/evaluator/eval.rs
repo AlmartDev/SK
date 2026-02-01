@@ -370,12 +370,33 @@ impl Evaluator {
     }
 
     fn apply_binary(&mut self, left: Value, op: TokenSpan, right: Value) -> Result<Value, Error> {
+        let operator = op.token.clone();
+
+        match operator { // Pre-calculations for x - x, x / x and x * 0
+            Token::Star => {
+                if let Value::Number(n) = left { if n == 0.0 { return Ok(Value::Number(0.0)); } }
+                if let Value::Number(n) = right { if n == 0.0 { return Ok(Value::Number(0.0)); } }
+            }
+            Token::Minus => {
+                if left == right { return Ok(Value::Number(0.0)); }
+            }
+            Token::Slash => {
+                if left == right {
+                    match left {
+                        Value::Number(n) if n != 0.0 => return Ok(Value::Number(1.0)),
+                        Value::Unknown | Value::Symbolic { .. } => return Ok(Value::Number(1.0)),
+                        _ => {} 
+                    }
+                }
+            }
+            _ => {}
+        }
+
         if left == Value::Unknown || right == Value::Unknown {
             return Ok(Value::Unknown);
         }
 
         let is_symbolic = left.is_symbolic_or_unknown() || right.is_symbolic_or_unknown();
-        let operator = op.token.clone();
 
         let res: Result<Value, String> = match operator {
             Token::Plus => left.add(&right).map_err(|e| e.message),
