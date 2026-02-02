@@ -26,6 +26,12 @@ impl Parser {
         Ok(statements)
     }
 
+    fn skip_newlines(&mut self) {
+        while self.check(&Token::NewLine) {
+            self.advance();
+        }
+    }
+
     // --- Declarations ---
 
     fn declaration(&mut self) -> Result<Stmt, Error> {
@@ -98,6 +104,8 @@ impl Parser {
         }
         
         self.consume(Token::RParen, "Expect ')' after parameters.")?;
+        
+        self.skip_newlines();
         self.consume(Token::LBrace, "Expect '{' before function body.")?;
         
         let body = self.block()?; 
@@ -181,7 +189,7 @@ impl Parser {
         self.end_stmt()?;
         Ok(Stmt::Expression { expression: expr })
     }
-    
+        
     fn if_statement(&mut self) -> Result<Stmt, Error> {
         let condition = self.expression()?;
         
@@ -199,17 +207,25 @@ impl Parser {
             IfPolicy::Strict // Default to strict policy
         };
 
+        self.skip_newlines();
         let then_branch = Box::new(self.statement()?);
         let mut elif_branch = Vec::new();
 
+        self.skip_newlines();
+
         while self.match_token(Token::Elif) {
             let elif_cond = self.expression()?;
+            
+            self.skip_newlines(); 
             let elif_body = self.statement()?;
             elif_branch.push((elif_cond, elif_body));
+
+            self.skip_newlines();
         }
 
         let mut else_branch = None;
         if self.match_token(Token::Else) {
+            self.skip_newlines();
             else_branch = Some(Box::new(self.statement()?));
         }
 
