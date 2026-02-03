@@ -261,12 +261,12 @@ impl Parser {
         self.logic_or()
     }
 
-    fn addition(&mut self) -> Result<Expr, Error> {
-        let mut expr = self.multiplication()?;
-
-        while self.match_any(&[Token::Plus, Token::Minus]) {
+    // Helper method to parse binary operators
+    fn binary(&mut self, next: fn(&mut Self) -> Result<Expr, Error>, operators: &[Token]) -> Result<Expr, Error> {
+        let mut expr = next(self)?;
+        while self.match_any(operators) {
             let operator = self.previous().clone();
-            let right = self.multiplication()?;
+            let right = next(self)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 operator,
@@ -274,94 +274,34 @@ impl Parser {
             };
         }
         Ok(expr)
+    }
+
+    fn addition(&mut self) -> Result<Expr, Error> {
+        self.binary(Self::multiplication, &[Token::Plus, Token::Minus])
     }
 
     fn logic_or(&mut self) -> Result<Expr, Error> {
-        let mut expr = self.logic_and()?;
-        while self.match_token(Token::Or) {
-            let operator = self.previous().clone();
-            let right = self.logic_and()?;
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                operator,
-                right: Box::new(right),
-            };
-        }
-        Ok(expr)
+        self.binary(Self::logic_and, &[Token::Or])
     }
 
     fn logic_and(&mut self) -> Result<Expr, Error> {
-        let mut expr = self.equality()?;
-        while self.match_token(Token::And) {
-            let operator = self.previous().clone();
-            let right = self.equality()?;
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                operator,
-                right: Box::new(right),
-            };
-        }
-        Ok(expr)
+        self.binary(Self::equality, &[Token::And])
     }
 
     fn equality(&mut self) -> Result<Expr, Error> {
-        let mut expr = self.comparison()?;
-        while self.match_any(&[Token::EqualEqual, Token::BangEqual]) {
-            let operator = self.previous().clone();
-            let right = self.comparison()?;
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                operator,
-                right: Box::new(right),
-            };
-        }
-        Ok(expr)
+        self.binary(Self::comparison, &[Token::EqualEqual, Token::BangEqual])
     }
 
     fn comparison(&mut self) -> Result<Expr, Error> {
-        let mut expr = self.addition()?;
-        while self.match_any(&[Token::Greater, Token::GreaterEqual, Token::Less, Token::LessEqual]) {
-            let operator = self.previous().clone();
-            let right = self.addition()?;
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                operator,
-                right: Box::new(right),
-            };
-        }
-        Ok(expr)
+        self.binary(Self::addition, &[Token::Greater, Token::GreaterEqual, Token::Less, Token::LessEqual])
     }
 
     fn multiplication(&mut self) -> Result<Expr, Error> {
-        let mut expr = self.power()?;
-
-        while self.match_tokens(&[Token::Star, Token::Slash]) {
-            let operator = self.previous().clone();
-            let right = self.power()?;
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                operator,
-                right: Box::new(right),
-            };
-        }
-
-        Ok(expr)
+        self.binary(Self::power, &[Token::Star, Token::Slash])
     }
 
     fn power(&mut self) -> Result<Expr, Error> {
-        let mut expr = self.unary()?;
-
-        while self.match_token(Token::Caret) {
-            let operator = self.previous().clone();
-            let right = self.unary()?;
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                operator,
-                right: Box::new(right),
-            };
-        }
-
-        Ok(expr)
+        self.binary(Self::unary, &[Token::Caret])
     }
 
     fn unary(&mut self) -> Result<Expr, Error> {
@@ -473,16 +413,6 @@ impl Parser {
         if self.check(&t) {
             self.advance();
             return true;
-        }
-        false
-    }
-
-    fn match_tokens(&mut self, types: &[Token]) -> bool {
-        for t in types {
-            if self.check(t) {
-                self.advance();
-                return true;
-            }
         }
         false
     }
