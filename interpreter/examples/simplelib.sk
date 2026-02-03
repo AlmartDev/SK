@@ -1,4 +1,4 @@
-fn fibonacci(n, previous = 0, current = 1) {
+pub fn fibonacci(n, previous = 0, current = 1) {
     if n > 0 {
         print(current)
         fibonacci(n - 1, current, previous + current)

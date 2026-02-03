@@ -186,8 +186,8 @@ impl Evaluator {
             Stmt::If { condition, policy, then_branch, elif_branch, else_branch } => {
                 self.eval_if_chain(condition, *then_branch, &elif_branch, &else_branch, policy)
             }
-            Stmt::Function { name, params, body } => {
-                let function = Value::Function(Function { params, body, closure: self.env.clone() });
+            Stmt::Function { name, params, body, is_public } => {
+                let function = Value::Function(Function { params, body, closure: self.env.clone(), is_public });
                 self.env.borrow_mut().define(name.token_to_string(), function);
                 Ok(Value::None)
             }
@@ -481,10 +481,22 @@ impl Evaluator {
                         _ => unreachable!(),
                     };
                     
-                    mod_env.borrow().get(member_name).map_err(|msg| Error {
+                    let val = mod_env.borrow().get(member_name).map_err(|msg| Error {
                         token: name.clone(), 
                         message: msg,
-                    })
+                    })?;
+
+                    // Check if private
+                    if let Value::Function(func) = &val {
+                        if !func.is_public {
+                            return Err(Error {
+                                token: name.clone(),
+                                message: format!("Function '{}' is private!", member_name)
+                            });
+                        }
+                    }
+
+                    Ok(val)
                 } else {
                     Err(Error {
                         token: name.clone(),

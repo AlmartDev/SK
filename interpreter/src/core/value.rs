@@ -22,6 +22,7 @@ pub struct Function {
     pub params: Vec<Parameter>,
     pub body: Vec<Stmt>,
     pub closure: Rc<RefCell<Environment>>, 
+    pub is_public: bool,
 }
 
 #[derive(Debug, Clone)]

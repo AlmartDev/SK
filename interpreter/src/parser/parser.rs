@@ -40,6 +40,11 @@ impl Parser {
                 self.advance();
                 self.import_declaration()
             }
+            Token::Public => {
+                self.advance();
+                self.consume(Token::Function, "Expected 'fn' after 'pub'.")?;
+                self.function_declaration(true)
+            }
             Token::Let => {
                 self.advance();
                 self.let_declaration()
@@ -90,7 +95,7 @@ impl Parser {
         }
     }
 
-    fn function_declaration(&mut self) -> Result<Stmt, Error> {
+    fn function_declaration(&mut self, is_public: bool) -> Result<Stmt, Error> {
         let name = self.consume_identifier("Expect function name.")?;
 
         self.consume(Token::LParen, "Expect '(' after function name.")?;
@@ -121,6 +126,7 @@ impl Parser {
             name,
             params: parameters,
             body,
+            is_public,
         })
     }
 
@@ -178,7 +184,7 @@ impl Parser {
     
     fn statement(&mut self) -> Result<Stmt, Error> {
         if self.match_token(Token::Function) {
-            return self.function_declaration()
+            return self.function_declaration(false)
         }
 
         if self.match_token(Token::LBrace) {

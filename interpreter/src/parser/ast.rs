@@ -94,7 +94,8 @@ pub enum Stmt {
     Function {
         name: TokenSpan,
         params: Vec<Parameter>,
-        body: Vec<Stmt>
+        body: Vec<Stmt>,
+        is_public: bool
     }
 }
 
