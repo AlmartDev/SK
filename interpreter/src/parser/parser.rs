@@ -449,6 +449,7 @@ impl Parser {
     fn end_stmt(&mut self) -> Result<(), Error> {
         if self.is_at_end() { return Ok(()); }
         if self.match_token(Token::NewLine) { return Ok(()); }
+        if self.check(&Token::RBrace) { return Ok(()); }
         Err(Error { 
             token: self.peek().clone(), 
             message: "Expect newline or EOF after statement".to_string() 
