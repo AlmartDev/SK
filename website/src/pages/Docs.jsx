@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Hash, ChevronRight, FileText, AlertCircle, Folder } from 'lucide-react';
+import { Hash, ChevronRight, FileText, AlertCircle, Folder, ChevronDown } from 'lucide-react';
 import { Marked } from 'marked';
 import { markedHighlight } from "marked-highlight";
 import hljs from 'highlight.js';
@@ -22,8 +22,19 @@ const Docs = ({ theme, setPage }) => {
   const [content, setContent] = useState('');
   const [displayTitle, setDisplayTitle] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [expandedCategories, setExpandedCategories] = useState(new Set(['Start']));
 
   const formatFileName = (path) => path.split('/').pop().replace('.md', '').replace(/[-_]/g, ' ');
+
+  const toggleCategory = (category) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(category)) {
+      newExpanded.delete(category);
+    } else {
+      newExpanded.add(category);
+    }
+    setExpandedCategories(newExpanded);
+  };
 
   const categories = useMemo(() => {
     const groups = {};
@@ -85,22 +96,33 @@ const Docs = ({ theme, setPage }) => {
             <nav className="flex flex-col gap-8">
               {Object.entries(categories).map(([category, paths]) => (
                 <div key={category} className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2 px-2 mb-1 opacity-40">
+                  <button
+                    onClick={() => toggleCategory(category)}
+                    className="flex items-center gap-2 px-2 mb-1 opacity-40 hover:opacity-60 transition-opacity"
+                  >
+                    <ChevronDown 
+                      size={14} 
+                      className={`text-white transition-transform ${expandedCategories.has(category) ? 'rotate-0' : '-rotate-90'}`}
+                    />
                     <Folder size={12} className="text-white" />
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">{category}</span>
-                  </div>
-                  {paths.map((path) => (
-                    <button
-                      key={path}
-                      onClick={() => setActivePath(path)}
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all group ${
-                        activePath === path ? 'bg-white text-black font-bold shadow-lg scale-[1.02]' : 'text-slate-400 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      <Hash size={14} className={activePath === path ? 'text-black' : 'text-slate-600'} />
-                      <span className="text-sm capitalize">{formatFileName(path)}</span>
-                    </button>
-                  ))}
+                  </button>
+                  {expandedCategories.has(category) && (
+                    <div className="flex flex-col gap-2">
+                      {paths.map((path) => (
+                        <button
+                          key={path}
+                          onClick={() => setActivePath(path)}
+                          className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all group ${
+                            activePath === path ? 'bg-white text-black font-bold shadow-lg scale-[1.02]' : 'text-slate-400 hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          <Hash size={14} className={activePath === path ? 'text-black' : 'text-slate-600'} />
+                          <span className="text-sm capitalize">{formatFileName(path)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </nav>
