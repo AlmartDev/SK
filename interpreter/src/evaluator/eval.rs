@@ -7,13 +7,22 @@ use crate::evaluator::env::Environment;
 use std::rc::Rc;
 use std::cell::RefCell;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum ControlFlow {
+    None, Break, Continue,
+}
+
 pub struct Evaluator {
     pub env: Rc<RefCell<Environment>>,
+    control_flow: ControlFlow,
 }
 
 impl Evaluator {
     pub fn new(env: Rc<RefCell<Environment>>) -> Self {
-        Self { env }
+        Self { 
+            env,
+            control_flow: ControlFlow::None,
+        }
     }
 
     pub fn evaluate(&mut self, statements: Vec<Stmt>) -> Result<Value, Error> {
@@ -173,7 +182,7 @@ impl Evaluator {
                 }
                 Ok(Value::None)
             }
-            Stmt::Print { expression } => {
+            Stmt::Print { expression } => { // Helper function to display values, not the built-in print()
                 let val = self.eval_expr(expression)?;
                 self.print_value(val);
                 Ok(Value::None)
@@ -188,6 +197,45 @@ impl Evaluator {
             Stmt::Function { name, params, body, is_public } => {
                 let function = Value::Function(Function { params, body, closure: self.env.clone(), is_public });
                 self.env.borrow_mut().define(name.token_to_string(), function);
+                Ok(Value::None)
+            }
+            Stmt::Loop { body } => {
+                loop {
+                    self.control_flow = ControlFlow::None;
+                    let new_env = Environment::new_enclosed(self.env.clone());
+                    let previous = self.env.clone();
+                    self.env = Rc::new(RefCell::new(new_env));
+
+                    for stmt in body.clone() {
+                        if let Err(e) = self.eval_stmt(stmt) {
+                            self.env = previous.clone();
+                            return Err(e);
+                        }
+                        
+                        if self.control_flow == ControlFlow::Break {
+                            self.control_flow = ControlFlow::None;
+                            self.env = previous.clone();
+                            return Ok(Value::None);
+                        }
+                        
+                        if self.control_flow == ControlFlow::Continue {
+                            break;
+                        }
+                    }
+                    
+                    self.env = previous;
+                    
+                    if self.control_flow == ControlFlow::Continue {
+                        self.control_flow = ControlFlow::None;
+                    }
+                }
+            }
+            Stmt::Break => {
+                self.control_flow = ControlFlow::Break;
+                Ok(Value::None)
+            }
+            Stmt::Continue => {
+                self.control_flow = ControlFlow::Continue;
                 Ok(Value::None)
             }
         }

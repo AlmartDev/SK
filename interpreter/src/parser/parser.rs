@@ -68,11 +68,25 @@ impl Parser {
             Token::Panic => {
                 self.advance();
                 self.panic_statement()
+            },
+            Token::Loop => {
+                self.advance();
+                self.loop_statement()
+            }
+            Token::Break => {
+                self.advance();
+                self.end_stmt()?;
+                Ok(Stmt::Break)
+            }
+            Token::Continue => {
+                self.advance();
+                self.end_stmt()?;
+                Ok(Stmt::Continue)
             }
             _ => self.statement(),
         }
     }
-
+    
     fn import_declaration(&mut self) -> Result<Stmt, Error> {
         let peeked = self.peek().token.clone();
         
@@ -93,6 +107,14 @@ impl Parser {
                 message: "Expect library name or file path after 'import'.".to_string(),
             }),
         }
+    }
+
+    fn loop_statement(&mut self) -> Result<Stmt, Error> {
+        self.skip_newlines();
+        self.consume(Token::LBrace, "Expect '{' before loop body.")?;
+        
+        let body = self.block()?;
+        Ok(Stmt::Loop { body })
     }
 
     fn function_declaration(&mut self, is_public: bool) -> Result<Stmt, Error> {

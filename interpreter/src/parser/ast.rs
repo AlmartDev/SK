@@ -1,4 +1,5 @@
 use crate::parser::lexer::TokenSpan;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Binary {
@@ -96,7 +97,13 @@ pub enum Stmt {
         params: Vec<Parameter>,
         body: Vec<Stmt>,
         is_public: bool
-    }
+    },
+
+    Loop {
+        body: Vec<Stmt>,
+    },
+    Break,
+    Continue,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -22,7 +22,6 @@ pub enum Token {
     Merge,
     Strict,
     None,
-    Loop,
     Print,
     Input,
     Str,
@@ -32,6 +31,10 @@ pub enum Token {
     Kind,
     Comma,
     Dot,
+
+    Loop,
+    Break,
+    Continue,
 
     // Operators & Symbols
     Assign,
@@ -304,6 +307,8 @@ impl Lexer {
             "input" => Token::Input,
             "fn" => Token::Function,
             "loop" => Token::Loop,
+            "break" => Token::Break,
+            "continue" => Token::Continue,
             "none" => Token::None,
             "kind" => Token::Kind,
             "true" => Token::True,
