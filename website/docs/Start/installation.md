@@ -12,7 +12,7 @@ There are two main ways to install the SK interpreter, either from github releas
 $ cargo install sk-lang
 ```
 
-then use "```SK```" on the terminal to run the SK interpreter
+then use ```SK``` on the terminal to run the SK interpreter
 
 ### Option B: download from github releases
 

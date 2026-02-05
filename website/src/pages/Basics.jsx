@@ -35,7 +35,7 @@ const Basics = ({ theme }) => {
   ];
 
   return (
-    <div className="flex-1 overflow-hidden py-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="flex-1 w-full overflow-y-auto bg-[#050508] py-16 text-left animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="max-w-[75%] mx-auto grid grid-cols-3 gap-8">
         
         <div className={`col-span-2 ${theme.card} border-2 ${theme.border} rounded-[2rem] p-12 shadow-2xl flex flex-col`}>

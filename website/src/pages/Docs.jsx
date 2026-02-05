@@ -123,8 +123,11 @@ const Docs = ({ theme, setPage }) => {
               </div>
               <h1 className="text-6xl font-black text-white mb-10 uppercase tracking-tighter leading-none">{displayTitle}</h1>
               <div className={`p-12 rounded-[2rem] border-2 ${theme.border} ${theme.card} bg-opacity-50 shadow-2xl overflow-hidden`}>
-                <article className="prose-custom select-text">
-                  <div dangerouslySetInnerHTML={{ __html: content }} />
+                <article className="prose-custom select-text max-w-none">
+                  <div 
+                    className="markdown-content"
+                    dangerouslySetInnerHTML={{ __html: content }} 
+                  />
                 </article>
               </div>
             </div>

@@ -26,3 +26,5 @@ usage: SK : starts a repl interpreter.
 * Use ```--version``` to display the interpreter's version
 
 - Use ```--help``` to display the first dialog
+
+> TODO: Run whole projects with the --project option
