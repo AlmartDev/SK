@@ -30,7 +30,7 @@ fn run_repl() {
     let mut interpreter = SKInterpreter::new();
     let mut rl = DefaultEditor::new().expect("Failed to create editor");
     
-    println!("SK REPL ({}). Type 'exit' to quit.", VERSION);
+    println!("{} REPL ({}). Type 'exit' to quit.", NAME, VERSION);
 
     loop {
         let readline = rl.readline(">> ");
@@ -103,13 +103,18 @@ fn main() {
         process::exit(0);
     }
 
-    if args.len() > 1 {
+    if args.len() > 2 {
         help();
         process::exit(1);
     }
+    
+    let mut path = PathBuf::from(&args[0]);
 
-    let path = PathBuf::from(&args[0]);
-
+    if args.contains(&"--project".to_string()) {
+        path = PathBuf::from(&args[1]);
+        path.push("main.sk");
+    }
+    
     if let Err(e) = check(&path) {  // check file is valid
         log::error!("{}", e);
         process::exit(1)
@@ -122,6 +127,7 @@ fn help() {
     println!("{} - {}", NAME, VERSION);
     println!("usage: {} : starts a repl interpreter.", NAME);
     println!("       {} <filename> : runs the file at the given path.", NAME);
+    println!("       {} --project <path> : runs 'main.sk' at the given path.", NAME);
     println!("       {} --version : shows interpreter's version.", NAME);
     println!("       {} --help : shows this dialog.", NAME);
 }
