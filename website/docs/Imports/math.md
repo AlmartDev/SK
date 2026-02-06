@@ -27,3 +27,9 @@ Includes many simple mathematical functions such as:
 
 * ```math.deg()```, from rads to degrees
 * ```math.rad()```, from degrees to radians
+
+* ```math.intersect(A, B)```, returns the intersection of both intervals
+* ```math.union(A, B)```, returns the smallest possible interval that contains both
+
+* ```math.mid(A)```, returns the midpoint of the interval, returns number
+* ```math.width(A)```, returns max - min, a number
