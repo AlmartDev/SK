@@ -1,4 +1,5 @@
 pub mod math;
+pub mod os;
 pub mod fs;
 pub mod rand;
 pub mod time;
@@ -14,6 +15,7 @@ pub fn get_library_registry() -> HashMap<String, LibRegisterFn> {
     // Standard libraries: 
     registry.insert("math".to_string(), crate::libs::math::register);
 
+    registry.insert("os".to_string(), crate::libs::os::register);
     registry.insert("fs".to_string(), crate::libs::fs::register);
     registry.insert("rand".to_string(), crate::libs::rand::register);
     registry.insert("time".to_string(), crate::libs::time::register);

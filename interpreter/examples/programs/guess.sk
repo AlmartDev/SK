@@ -1,0 +1,28 @@
+import os
+import time
+import rand
+
+let timer = time.startTimer()
+
+let guess = rand.rangeInt([0..100])
+let tries = 0
+
+loop {
+    let try = num(input("Your Guess: "))
+    tries = tries + 1
+
+    if try > guess {
+        print("Too big")
+
+    } elif try < guess {
+        print("Too small")
+
+    } else {
+        os.clear()
+        print("YOU WIN!")
+        break
+    }
+}
+
+let elapsed = time.stopTimer(timer)
+print("It took you " + str(elapsed) + " seconds and " + str(tries) + " tries to guess it!")
