@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import IDE from './pages/IDE';
@@ -21,7 +21,6 @@ function AppRoutes({ theme }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [page, setPage] = useState('about');
   const [code, setCode] = useState(
     '// The SK Programming Language\n' + 
     '\n' +
@@ -51,6 +50,15 @@ function AppRoutes({ theme }) {
   const fileInputRef = useRef(null);
   const t = theme;
 
+  const currentPage = useMemo(() => {
+    return location.pathname.replace('/', '') || 'about';
+  }, [location.pathname]);
+
+  const setPage = (nextPage) => {
+    const target = `/${nextPage}`;
+    if (location.pathname !== target) navigate(target);
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -64,24 +72,11 @@ function AppRoutes({ theme }) {
   }, []);
 
   useEffect(() => {
-    // sync page state from URL
-    const path = location.pathname.replace('/', '') || 'about';
-    setPage(path);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    // sync URL from page state
-    if (location.pathname !== `/${page}`) {
-      navigate(`/${page}`, { replace: true });
-    }
-  }, [page, navigate, location.pathname]);
-
-  useEffect(() => {
-    if (page === 'ide') {
+    if (currentPage === 'ide') {
       setCommand('SK --version');
       if (!isInitialized) setOutput('Loading interpreter...');
     }
-  }, [page, isInitialized]);
+  }, [currentPage, isInitialized]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -189,7 +184,7 @@ function AppRoutes({ theme }) {
   return (
     <div className={`h-screen flex flex-col ${t.bg} font-sans p-10 select-none`}>
       <input type="file" ref={fileInputRef} onChange={handleUpload} className="hidden" accept=".sk" />
-      <Header currentPage={page} onRun={handleRun} onDownload={handleDownload} onUpload={handleUpload} setPage={setPage} theme={t} />
+      <Header currentPage={currentPage} onRun={handleRun} onDownload={handleDownload} onUpload={handleUpload} setPage={setPage} theme={t} />
       <Routes>
         <Route path="/about" element={<About theme={t} setPage={setPage} />} />
         <Route path="/ide" element={<IDE {...{code, setCode, output, command, outputWidth, startResizing, handleEditorWillMount, theme: t}} />} />
