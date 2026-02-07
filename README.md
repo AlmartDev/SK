@@ -25,7 +25,7 @@ The final version of SK is in the works with a full scale Rust interpreter, this
 cargo install sk-lang
 ```
 
-* or download the latest binaries [here!](https://github.com/AlmartDev/SK/releases/latest)
+* or download the latest binaries [here!](https://github.com/aloyak/SK/releases/latest)
 
 > Please consider taking a look to the docs here: [documentation](https://sk-lang.vercel.app/docs)
 
@@ -208,7 +208,7 @@ loop {
 ```
 * The ```loop``` statement includes the ```break``` and ```continue``` keywords
 
-### 6. Imports & Libraries
+### 7. Imports & Libraries
 
 * SK features a multiple file import system for better organization and scalability
 
@@ -228,7 +228,7 @@ import "server.sk" as server
 
 > Please consider taking a look to the docs for more information: [documentation](https://sk-lang.vercel.app/docs)
 
-### 7. Beatiful Errors
+### 8. Beatiful Errors
 * This is the proposed syntax, this is yet to come!
 ```sh
 [Runtime Error]: Use of undefined variable 'myvar' (files/test.sk:6:8)
@@ -237,7 +237,7 @@ import "server.sk" as server
      |       ^^^^^
 ```
 
-### 8. Proposed Ideas
+### 9. Proposed Ideas
 
 * Some ideas yet to come:
 
@@ -257,7 +257,7 @@ import "server.sk" as server
 
 SK has a language support extension for Visual Studio Code that includes small refinements to make working with SK easier.
 
-* Download the latest version in [here](https://github.com/AlmartDev/SK/releases/latest) or build the extension yourself inside ```extensions/vscode``` with:
+* Download the latest version in [here](https://github.com/aloyak/SK/releases/latest) or build the extension yourself inside ```extensions/vscode``` with:
 
 ```sh
 cd extensions/vscode/

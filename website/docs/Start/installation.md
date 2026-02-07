@@ -18,7 +18,7 @@ then use ```SK``` on the terminal to run the SK interpreter
 
 
 Download the latest binary from the github repository at:
-* [Latest Release](https://github.com/AlmartDev/SK/releases)
+* [Latest Release](https://github.com/aloyak/SK/releases)
 
 ### Check your Installation
 
@@ -32,7 +32,7 @@ $ SK --version
 
 Currently, SK code coloring and snippets are only avaliable for vs code, Download the latest version of the extension here
 
-* [Latest Release](https://github.com/AlmartDev/SK/releases)
+* [Latest Release](https://github.com/aloyak/SK/releases)
 
 or build the extension yourself
 ```sh

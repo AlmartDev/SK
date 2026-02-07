@@ -39,7 +39,7 @@ function AppRoutes({ theme }) {
     'print("Rate this language from " + str(variable) + "!")\n' +
     '\n' +
     '// Find many more examples to try at: \n' +
-    '// https://github.com/AlmartDev/SK/tree/main/interpreter/examples\n'
+    '// https://github.com/aloyak/SK/tree/main/interpreter/examples\n'
   );
   const [output, setOutput] = useState('Run the code to see the output');
   const [outputWidth, setOutputWidth] = useState(900);

@@ -69,7 +69,7 @@ const Basics = ({ theme }) => {
 
             <div className="flex items-center gap-4">
               <button 
-                onClick={() => window.open('https://github.com/AlmartDev/SK/releases', '_blank')}
+                onClick={() => window.open('https://github.com/aloyak/SK/releases', '_blank')}
                 className="group flex items-center gap-2 px-6 py-2 bg-white text-black rounded-xl font-bold text-lg hover:bg-slate-200 transition-all duration-300"
               >
                 <Box size={20} />

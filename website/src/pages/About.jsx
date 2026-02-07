@@ -15,7 +15,7 @@ const About = ({ theme, setPage }) => {
       <div className="flex gap-3 mb-8">
         <button 
           className="group flex items-center gap-2 px-4 py-1.5 bg-white text-black rounded-md font-bold text-lg hover:bg-slate-200 transition-all duration-300"
-          onClick={() => openLink('https://github.com/AlmartDev/SK')}
+          onClick={() => openLink('https://github.com/aloyak/SK')}
         >
           <Github size={24} />
           <span>GitHub</span>

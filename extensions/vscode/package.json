@@ -5,7 +5,7 @@
   "version": "0.5.3",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AlmartDev/SK"
+    "url": "https://github.com/aloyak/SK"
   },
   "engines": {
     "vscode": "^1.108.1"
