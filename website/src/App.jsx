@@ -42,7 +42,7 @@ function AppRoutes({ theme }) {
     '// https://github.com/AlmartDev/SK/tree/main/interpreter/examples\n'
   );
   const [output, setOutput] = useState('Run the code to see the output');
-  const [outputWidth, setOutputWidth] = useState(700);
+  const [outputWidth, setOutputWidth] = useState(900);
   const [isInitialized, setIsInitialized] = useState(false);
   const [command, setCommand] = useState('SK --version');
   

@@ -52,7 +52,7 @@ const IDE = ({ code, setCode, output, command, outputWidth, startResizing, handl
               <span className="text-slate-600 font-bold">{command}</span>
             </div>
             
-            <pre className="text-3xl text-[#abb2bf] font-medium whitespace-pre-wrap leading-relaxed">
+            <pre className="text-2xl text-[#abb2bf] font-medium whitespace-pre-wrap leading-relaxed">
               {output}
             </pre>
           </div>

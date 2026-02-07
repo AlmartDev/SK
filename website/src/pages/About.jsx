@@ -38,7 +38,7 @@ const About = ({ theme, setPage }) => {
           It features a Rust-inspired syntax and a high-performance interpreter, <br/>
           written in Rust, that supports the core specifications of the language. <br/><br/>
 
-          Developed by <a href='https://github.com/AlmartDev/'>@AlmartDev</a> with &lt;3
+          Developed by <a href='https://github.com/aloyak/'>@aloyak</a> with &lt;3
         </p>
       </div>
 
