@@ -26,7 +26,7 @@ const IDE = ({ code, setCode, output, command, outputWidth, startResizing, handl
               padding: { top: 40 },
               lineHeight: 40,
               renderLineHighlight: 'none',
-              scrollbar: { vertical: 'hidden', horizontal: 'hidden' },
+              scrollbar: { vertical: 'hidden' },
             }}
           />
         </div>

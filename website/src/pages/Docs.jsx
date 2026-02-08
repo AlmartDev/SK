@@ -98,7 +98,7 @@ const Docs = ({ theme, setPage }) => {
                 <div key={category} className="flex flex-col gap-2">
                   <button
                     onClick={() => toggleCategory(category)}
-                    className="flex items-center gap-2 px-2 mb-1 opacity-40 hover:opacity-60 transition-opacity"
+                    className="cursor-pointer flex items-center gap-2 px-2 mb-1 opacity-40 hover:opacity-60 transition-opacity"
                   >
                     <ChevronDown 
                       size={14} 
@@ -113,7 +113,7 @@ const Docs = ({ theme, setPage }) => {
                         <button
                           key={path}
                           onClick={() => setActivePath(path)}
-                          className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all group ${
+                          className={`cursor-pointer flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all group ${
                             activePath === path ? 'bg-white text-black font-bold shadow-lg scale-[1.02]' : 'text-slate-400 hover:text-white hover:bg-white/5'
                           }`}
                         >

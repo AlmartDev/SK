@@ -268,15 +268,11 @@ vsce package
 
 ## Hackclub
 
+<a href="https://hackclub.com/"><img style="position: absolute; top: 0; left: 10px; border: 0; width: 256px; z-index: 999;" src="https://assets.hackclub.com/flag-orpheus-left.svg" href="https://flavortown.hackclub.com/projects/8834" alt="Hack Club"/></a>
+
 Proud member of HackClub!
 
 <https://flavortown.hackclub.com/projects/8834>
-
-<div align="center">
-  <a href="https://flavortown.hackclub.com/projects/8834">
-    <img src="https://assets.hackclub.com/flag-standalone.svg" alt="Hack Club" width="150" />
-  </a>
-</div>
 
 ### Inspiration
 
